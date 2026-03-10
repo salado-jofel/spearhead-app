@@ -3,7 +3,10 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
-export async function login(formData: FormData) {
+export async function login(
+  prevState: any,
+  formData: FormData,
+): Promise<{ error: string } | undefined> {
   const supabase = await createClient();
 
   const email = formData.get("email") as string;
@@ -15,11 +18,10 @@ export async function login(formData: FormData) {
   });
 
   if (error) {
-    console.error("Login error:", error.message);
-    // Redirect back to login with the error message
-    redirect(`/login?error=${encodeURIComponent(error.message)}`);
+    // Instead of redirecting with a query param, we return the error object
+    return { error: error.message };
   }
 
-  // If successful, send them to the dashboard
+  // If successful, redirect
   redirect("/dashboard");
 }

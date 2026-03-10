@@ -4,15 +4,50 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { User, Mail, Lock, Eye, UserPlus, ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { signup } from "../action";
+import { signup } from "../actions";
+import SubmitButton from "@/app/(components)/SubmitButton";
+import { useActionState, useState } from "react";
+import ErrorAlert from "@/app/(components)/ErrorAlert";
 
 export default function SignUpForm() {
+  const [state, formAction, isPending] = useActionState(signup, null);
+
+  // Initialize state for all fields
+  const [formValues, setFormValues] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    username: "",
+    password: "",
+  });
+
+  // Universal change handler
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormValues((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 p-4 select-none">
-      <div className="w-full max-w-[480px] bg-white rounded-2xl shadow-xl shadow-slate-200/60 p-8 md:p-10 border border-slate-100">
-        {/* ... Header remains the same ... */}
+      <div className="w-full max-w-120 bg-white rounded-2xl shadow-xl p-8 md:p-10 border border-slate-100">
+        <div className="flex flex-col items-center text-center mb-10">
+          <div className="w-12 h-12 text-emerald-500 mb-4">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-black tracking-tight text-emerald-600 uppercase">
+            Spearhead Medical
+          </h1>
+          <p className="text-slate-500 font-medium text-sm mt-1">
+            Sales Representative Portal
+          </p>
+        </div>
 
-        <form className="space-y-5">
+        <form action={formAction} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label
@@ -23,7 +58,9 @@ export default function SignUpForm() {
               </Label>
               <Input
                 id="firstName"
-                name="firstName" // Added name
+                name="firstName"
+                value={formValues.firstName} // Controlled value
+                onChange={handleChange} // Update state on type
                 required
                 placeholder="John"
                 className="h-11 border-slate-200 focus:border-emerald-500"
@@ -38,7 +75,9 @@ export default function SignUpForm() {
               </Label>
               <Input
                 id="lastName"
-                name="lastName" // Added name
+                name="lastName"
+                value={formValues.lastName} // Controlled value
+                onChange={handleChange} // Update state on type
                 required
                 placeholder="Doe"
                 className="h-11 border-slate-200 focus:border-emerald-500"
@@ -55,8 +94,10 @@ export default function SignUpForm() {
             </Label>
             <Input
               id="email"
-              name="email" // Added name
+              name="email"
               type="email"
+              value={formValues.email} // Controlled value
+              onChange={handleChange}
               required
               placeholder="john@example.com"
               className="h-11 border-slate-200 focus:border-emerald-500"
@@ -72,7 +113,9 @@ export default function SignUpForm() {
             </Label>
             <Input
               id="username"
-              name="username" // Added name
+              name="username"
+              value={formValues.username} // Controlled value
+              onChange={handleChange}
               required
               placeholder="Choose a username"
               className="h-11 border-slate-200 focus:border-emerald-500"
@@ -88,24 +131,28 @@ export default function SignUpForm() {
             </Label>
             <Input
               id="password"
-              name="password" // Added name
+              name="password"
               type="password"
+              value={formValues.password} // Controlled value
+              onChange={handleChange}
               required
+              minLength={6}
               placeholder="Create a password"
               className="h-11 border-slate-200 focus:border-emerald-500"
             />
           </div>
 
           <div className="space-y-4 pt-4">
-            {/* Added formAction here */}
-            <Button
-              formAction={signup}
-              className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg gap-2 rounded-lg transition-transform active:scale-[0.98]"
-            >
-              <UserPlus className="w-5 h-5" /> Create Account
-            </Button>
-
-            {/* ... "or" separator and Back button ... */}
+            <SubmitButton
+              classname="h-12 w-full bg-emerald-500 hover:bg-emerald-600 transition-all active:scale-95 font-bold"
+              isPending={isPending}
+              type="submit"
+              cta="Create Account"
+              variant="default"
+              size="lg"
+              isPendingMesssage="Creating an account..."
+            />
+            {state?.error && <ErrorAlert errorMessage={state.error} />}
           </div>
         </form>
       </div>

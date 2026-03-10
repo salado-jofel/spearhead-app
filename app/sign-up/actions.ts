@@ -3,7 +3,10 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
-export async function signup(formData: FormData) {
+export async function signup(
+  prevState: any,
+  formData: FormData,
+): Promise<{ error: string } | undefined> {
   // No need to import cookies here anymore, createClient handles it!
   const supabase = await createClient();
 
@@ -24,7 +27,8 @@ export async function signup(formData: FormData) {
   });
 
   if (error) {
-    redirect("/error?message=" + encodeURIComponent(error.message));
+    // Instead of redirecting with a query param, we return the error object
+    return { error: error.message };
   }
 
   redirect("/verify-email");

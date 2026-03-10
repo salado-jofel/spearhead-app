@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useActionState, useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,15 +14,39 @@ import {
   UserPlus,
   ArrowLeft,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { login } from "../action";
+import { login } from "../actions";
+import SubmitButton from "@/app/(components)/SubmitButton";
+import ErrorAlert from "@/app/(components)/ErrorAlert";
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
-  const searchParams = useSearchParams();
-  const error = searchParams.get("error");
+  const [state, formAction, isPending] = useActionState(login, null);
+
+  // 1. Initialize controlled state for the fields
+  const [formValues, setFormValues] = useState({
+    email: "",
+    password: "",
+  });
+
+  // 2. Handle input changes and update state
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormValues((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
+  // 3. Optional: Clear password only if there is a login error
+  useEffect(() => {
+    if (state?.error) {
+      setFormValues((prev) => ({ ...prev, password: "" }));
+    }
+  }, [state]);
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 p-4 select-none">
@@ -42,16 +66,8 @@ export default function SignInForm() {
           </p>
         </div>
 
-        {/* Dynamic Error Message */}
-        {error && (
-          <div className="mb-6 p-3 rounded-lg bg-red-50 border border-red-100 flex items-center gap-3 text-red-600 text-sm font-medium animate-in fade-in slide-in-from-top-1">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-            <p>{error}</p>
-          </div>
-        )}
-
         {/* Form Section */}
-        <form className="space-y-6">
+        <form action={formAction} className="space-y-6">
           <div className="space-y-4">
             {/* Email Field */}
             <div className="space-y-2">
@@ -67,6 +83,8 @@ export default function SignInForm() {
                 type="email"
                 placeholder="Enter your email"
                 required
+                value={formValues.email} // Controlled value
+                onChange={handleChange} // Change handler
                 className="h-12 border-slate-200 focus:border-emerald-500 focus:ring-emerald-500/10"
               />
             </div>
@@ -86,10 +104,12 @@ export default function SignInForm() {
                   type={showPassword ? "text" : "password"}
                   placeholder="Enter your password"
                   required
+                  value={formValues.password} // Controlled value
+                  onChange={handleChange} // Change handler
                   className="h-12 border-slate-200 focus:border-emerald-500 focus:ring-emerald-500/10 pr-10"
                 />
                 <button
-                  type="button" // Critical: prevents form submission
+                  type="button" // Prevents accidental form submission
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500 transition-colors"
                 >
@@ -101,6 +121,9 @@ export default function SignInForm() {
                 </button>
               </div>
             </div>
+
+            {/* Error Feedback */}
+            {state?.error && <ErrorAlert errorMessage={state.error} />}
           </div>
 
           {/* Remember & Forgot */}
@@ -108,6 +131,7 @@ export default function SignInForm() {
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="remember"
+                name="remember"
                 className="border-slate-300 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
               />
               <label
@@ -127,12 +151,15 @@ export default function SignInForm() {
 
           {/* Action Buttons */}
           <div className="space-y-4 pt-2">
-            <Button
-              formAction={login}
-              className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-lg gap-2 rounded-lg transition-all active:scale-[0.98]"
-            >
-              <LogIn className="w-5 h-5" /> Sign In
-            </Button>
+            <SubmitButton
+              classname="h-12 w-full bg-emerald-500 hover:bg-emerald-600 transition-all active:scale-95 font-bold"
+              isPending={isPending}
+              type={"submit"}
+              cta={"Sign In"}
+              variant={"default"}
+              size={"lg"}
+              isPendingMesssage={"Signing in..."}
+            />
 
             <div className="relative flex items-center justify-center py-2">
               <div className="absolute inset-0 flex items-center">
@@ -143,15 +170,20 @@ export default function SignInForm() {
               </span>
             </div>
 
-            <Button
-              asChild
-              variant="outline"
-              className="w-full h-12 border-emerald-500 text-emerald-500 hover:bg-emerald-50 font-bold gap-2 rounded-lg"
-            >
-              <Link href="/sign-up">
-                <UserPlus className="w-5 h-5" /> Create New Account
-              </Link>
-            </Button>
+            <SubmitButton
+              classname="h-12 w-full cursor-pointer bg-white border-emerald-500 text-emerald-500 hover:bg-emerald-50 transition-all active:scale-95 font-bold"
+              type={"button"}
+              cta={
+                <Link
+                  href="/sign-up"
+                  className="flex gap-2 items-center justify-center"
+                >
+                  <UserPlus className="w-5 h-5" /> Create New Account
+                </Link>
+              }
+              variant={"outline"}
+              size={"lg"}
+            />
           </div>
         </form>
 
