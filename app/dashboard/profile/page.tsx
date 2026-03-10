@@ -1,3 +1,20 @@
-export default function Page() {
-  return <div>Profile</div>;
+import { getProfile } from "./actions";
+import Providers from "./(sections)/Providers";
+import Header from "./(sections)/Header";
+import ProfileForm from "./(sections)/ProfileForm";
+import { notFound } from "next/navigation";
+
+export default async function ProfilePage() {
+  const profile = await getProfile();
+
+  if (!profile) notFound();
+
+  return (
+    <Providers profile={profile}>
+      <div className="p-8  mx-auto space-y-6">
+        <Header />
+        <ProfileForm />
+      </div>
+    </Providers>
+  );
 }

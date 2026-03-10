@@ -4,8 +4,7 @@ import { cookies } from "next/headers";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 // Ensure this matches your .env.local exactly
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
-console.log("Supabase URL:", supabaseUrl);
-console.log("Supabase Key:", supabaseKey);
+
 export const createClient = async () => {
   // Get the cookie store directly inside the function
   const cookieStore = await cookies();
