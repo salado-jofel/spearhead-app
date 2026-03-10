@@ -15,13 +15,10 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          // Update the REQUEST cookies
           cookiesToSet.forEach(({ name, value, options }) =>
-            // FIX: Pass as a single object to satisfy the new TypeScript definition
             request.cookies.set({ name, value, ...options }),
           );
 
-          // Update the RESPONSE cookies
           supabaseResponse = NextResponse.next({
             request,
           });
@@ -34,27 +31,45 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // IMPORTANT: This refreshes the session
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // PROTECTION LOGIC:
-  // 1. If no user and they are trying to access dashboard, send to login
-  if (!user && request.nextUrl.pathname.startsWith("/dashboard")) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/sign-in";
-    return NextResponse.redirect(url);
+  const currentPath = request.nextUrl.pathname;
+  const isAuthPage =
+    currentPath === "/sign-in" ||
+    currentPath === "/sign-up" ||
+    currentPath === "/verify-email";
+
+  // LOGIC A: If user IS logged in and tries to access Auth pages
+  if (user && isAuthPage) {
+    const referer = request.headers.get("referer");
+    const refererUrl = referer ? new URL(referer) : null;
+
+    // Check if the referer is just the landing page "/"
+    const isComingFromLanding = refererUrl?.pathname === "/";
+
+    // If coming from landing page OR no referer, go to dashboard
+    if (
+      !referer ||
+      isComingFromLanding ||
+      referer.includes("/sign-in") ||
+      referer.includes("/sign-up")
+    ) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/dashboard";
+      return NextResponse.redirect(url);
+    }
+
+    // Otherwise, send them back to where they were (e.g., /dashboard/orders)
+    return NextResponse.redirect(referer);
   }
 
-  // 2. If user IS logged in and tries to go back to login/sign-up, send to dashboard
-  if (
-    user &&
-    (request.nextUrl.pathname === "//sign-in" ||
-      request.nextUrl.pathname === "/sign-up")
-  ) {
+  // LOGIC B: Protect Dashboard
+  if (!user && currentPath.startsWith("/dashboard")) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = "/sign-in";
+    url.searchParams.set("next", currentPath);
     return NextResponse.redirect(url);
   }
 
