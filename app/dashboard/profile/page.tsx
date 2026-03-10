@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getProfile } from "./actions";
 import Providers from "./(sections)/Providers";
 import Header from "./(sections)/Header";
@@ -11,7 +13,7 @@ export default async function ProfilePage() {
 
   return (
     <Providers profile={profile}>
-      <div className="p-8  mx-auto space-y-6">
+      <div className="p-8 max-w-7xl mx-auto space-y-6">
         <Header />
         <ProfileForm />
       </div>
