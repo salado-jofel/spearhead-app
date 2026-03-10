@@ -1,4 +1,4 @@
-import { Sidebar } from "@/app/dashboard/(sections)/Sidebar";
+import { Sidebar } from "./(sections)/Sidebar";
 
 export default function DashboardLayout({
   children,
