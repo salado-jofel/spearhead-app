@@ -79,7 +79,7 @@ function ContractCard({ card }: { card: ContractCard }) {
 
 export default function ContractCards() {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl">
       {CONTRACTS.map((card) => (
         <ContractCard key={card.id} card={card} />
       ))}
