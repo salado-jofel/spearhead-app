@@ -65,7 +65,7 @@ export function Sidebar() {
   }, [supabase]);
 
   return (
-    <aside className="w-64 bg-white border-r border-slate-100 flex flex-col fixed h-full z-40">
+    <aside className="w-64 bg-white border-r border-slate-100 flex flex-col fixed h-full z-40 select-none">
       {/* Branding Section */}
       <div className="p-8 flex flex-col items-center select-none">
         <div className="w-10 h-10 text-[#2db0b0] mb-3">
