@@ -1,16 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-/**
- * Returns an initialized Supabase client instance
- */
 export async function getSupabaseClient(): Promise<SupabaseClient> {
   return await createClient();
 }
 
-/**
- * INSERT: Inserts a record into any table
- */
 export async function dbInsert<T extends Record<string, unknown>>({
   table,
   payload,
@@ -27,21 +21,24 @@ export async function dbInsert<T extends Record<string, unknown>>({
   return { error };
 }
 
-/**
- * SELECT: Fetches records from any table with optional column selection and ordering
- */
 export async function dbSelect<T>({
   table,
   columns = "*",
   order,
+  filter,
 }: {
   table: string;
   columns?: string;
   order?: { column: string; ascending?: boolean };
+  filter?: { column: string; value: string };
 }): Promise<{ data: T[] | null; error: { message: string } | null }> {
   const supabase = await getSupabaseClient();
 
   let query = supabase.from(table).select(columns);
+
+  if (filter) {
+    query = query.eq(filter.column, filter.value);
+  }
 
   if (order) {
     query = query.order(order.column, { ascending: order.ascending ?? false });
@@ -52,9 +49,6 @@ export async function dbSelect<T>({
   return { data: data as T[] | null, error };
 }
 
-/**
- * UPDATE: Updates records in any table by a given column match
- */
 export async function dbUpdate<T extends Record<string, unknown>>({
   table,
   payload,
@@ -77,9 +71,6 @@ export async function dbUpdate<T extends Record<string, unknown>>({
   return { data, error };
 }
 
-/**
- * DELETE: Deletes a record by a given column match
- */
 export async function dbDelete({
   table,
   column,

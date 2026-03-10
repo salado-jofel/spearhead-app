@@ -1,7 +1,4 @@
-import { createClient } from "@/utils/supabase/server";
-import { AddFacilityModal } from "./(sections)/AddFacilityModal";
 import SearchFilterBar from "./(sections)/SearchFilterBar";
-import { Facility } from "@/app/(interfaces)/facility";
 import Header from "./(sections)/Header";
 import FacilitiesTable from "./(sections)/FacilitiesTable";
 import Providers from "./(sections)/Providers";
@@ -12,13 +9,10 @@ export default async function FacilitiesPage() {
 
   return (
     <Providers facilities={facilities}>
-      <div className="p-8 w-full mx-auto space-y-6 select-none h-full">
+      <div className="p-8 w-full mx-auto space-y-6 select-none  h-full overflow-y-auto">
         <Header />
-        <AddFacilityModal />
-        <div>
-          <SearchFilterBar />
-          <FacilitiesTable filtered={facilities} />
-        </div>
+        <SearchFilterBar />
+        <FacilitiesTable />
       </div>
     </Providers>
   );
