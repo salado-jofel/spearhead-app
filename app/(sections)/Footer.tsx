@@ -19,7 +19,6 @@ export function Footer() {
           </p>
         </div>
 
-        {/* Navigation Links */}
         <nav className="flex flex-wrap justify-center gap-x-8 gap-y-4 mb-12">
           {["Product", "Why Us", "Demo", "Contact Scottie"].map((item) => (
             <Link
