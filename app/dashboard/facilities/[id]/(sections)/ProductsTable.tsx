@@ -88,7 +88,7 @@ function AddProductModal({
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium text-slate-700">
-              Price (₱)
+              Price ($)
             </label>
             <Input
               name="price"
@@ -193,7 +193,7 @@ function ProductRow({
           />
         ) : (
           <span className="text-slate-600 text-sm font-medium">
-            ₱{Number(product.price).toFixed(2)}
+            ${Number(product.price).toFixed(2)}
           </span>
         )}
       </td>

@@ -21,7 +21,7 @@ export default async function FacilityPage({
 
   return (
     <Providers facility={facility} products={products}>
-      <div className="p-8 w-full mx-auto space-y-6 select-none h-full overflow-y-auto bg-slate-50">
+      <div className="p-8  w-full mx-auto space-y-6 select-none h-full overflow-y-auto bg-slate-50">
         <Header />
         <FacilityDetails />
         <ProductsTable />

@@ -1,20 +1,23 @@
 "use client";
 
-import { Facility } from "@/app/(interfaces)/facility";
-import { useAppSelector } from "@/store/hooks";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { setSearch, setTypeFilter } from "../(redux)/facilities-slice";
+import type { Facility } from "@/app/(interfaces)/facility";
 import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 export default function SearchFilterBar() {
-  const state = useAppSelector((state) => state.facilities);
-  const [search, setSearch] = useState<string>("");
-  const [typeFilter, setTypeFilter] = useState<string>("All Types");
+  const dispatch = useAppDispatch();
+  const items = useAppSelector((state) => state.facilities.items);
+  const search = useAppSelector((state) => state.facilities.search);
+  const typeFilter = useAppSelector((state) => state.facilities.typeFilter);
+
   const typeOptions: string[] = useMemo(() => {
     const types = Array.from(
-      new Set(state.items.map((f: Facility) => f.type).filter(Boolean)),
-    );
+      new Set(items.map((f: Facility) => f.type).filter(Boolean)),
+    ) as string[];
     return ["All Types", ...types];
-  }, [state.items]);
+  }, [items]);
 
   return (
     <div className="flex items-center gap-2 mb-4 shadow-2xl">
@@ -25,7 +28,7 @@ export default function SearchFilterBar() {
           placeholder="Search..."
           value={search}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-            setSearch(e.target.value)
+            dispatch(setSearch(e.target.value))
           }
           className="w-full pl-9 bg-white pr-4 py-3 border border-slate-300 rounded-lg text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent"
         />
@@ -33,7 +36,7 @@ export default function SearchFilterBar() {
       <select
         value={typeFilter}
         onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-          setTypeFilter(e.target.value)
+          dispatch(setTypeFilter(e.target.value))
         }
         className="border border-slate-300 rounded-lg px-3 py-3 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
       >

@@ -9,7 +9,7 @@ export default async function FacilitiesPage() {
 
   return (
     <Providers facilities={facilities}>
-      <div className="p-8 w-full mx-auto space-y-6 select-none  h-full overflow-y-auto">
+      <div className="p-8  w-full mx-auto space-y-6 select-none  h-full overflow-y-auto">
         <Header />
         <SearchFilterBar />
         <FacilitiesTable />

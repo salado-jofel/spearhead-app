@@ -87,7 +87,7 @@ function ProductRow({ product }: { product: Product }) {
           />
         ) : (
           <span className="text-slate-700 font-medium text-sm">
-            ₱{Number(product.price).toFixed(2)}
+            ${Number(product.price).toFixed(2)}
           </span>
         )}
       </td>

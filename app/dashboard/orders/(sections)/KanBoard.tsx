@@ -125,7 +125,7 @@ function OrderCard({ order }: { order: Order }) {
       {/* ── Bottom Row ── */}
       <div className="flex items-center justify-between">
         <span className="text-sm font-bold text-slate-800">
-          ₱{Number(order.amount).toFixed(2)}
+          ${Number(order.amount).toFixed(2)}
         </span>
 
         {/* ── Advance Status Button ── */}

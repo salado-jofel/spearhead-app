@@ -17,8 +17,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus } from "lucide-react";
+import { Building2, Phone, Plus, User } from "lucide-react";
 import { addFacility } from "../actions";
+import { useAppDispatch } from "@/store/hooks";
+import { addFacilityToStore } from "../(redux)/facilities-slice";
+import type { Facility } from "@/app/(interfaces)/facility";
 
 const FACILITY_TYPES: string[] = [
   "Hospital",
@@ -30,46 +33,101 @@ const FACILITY_TYPES: string[] = [
   "Birthing Center",
 ];
 
+function FieldWrapper({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <label className="text-xs font-semibold text-slate-500 uppercase tracking-wide">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
+
 export function AddFacilityModal() {
+  const dispatch = useAppDispatch();
   const [open, setOpen] = useState<boolean>(false);
   const [type, setType] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(false);
 
   async function handleSubmit(formData: FormData) {
     formData.set("type", type);
-    await addFacility(formData);
+    setLoading(true);
+
+    // ── Optimistic update ──────────────────────────────────────
+    const optimistic: Facility = {
+      id: crypto.randomUUID(),
+      name: formData.get("name") as string,
+      type: formData.get("type") as string,
+      contact: formData.get("contact") as string,
+      phone: formData.get("phone") as string,
+      status: "Active",
+    };
+    dispatch(addFacilityToStore(optimistic));
     setOpen(false);
     setType("");
+
+    try {
+      await addFacility(formData);
+    } catch (err) {
+      console.error("[AddFacilityModal] Error:", err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-[#2db0b0] hover:bg-[#249191] text-white">
-          <Plus className="w-4 h-4 mr-2" /> Add Facility
+        <Button className="bg-[#2db0b0] hover:bg-[#249191] text-white shadow-sm">
+          <Plus className="w-4 h-4 mr-2" />
+          Add Facility
         </Button>
       </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Add New Facility</DialogTitle>
-        </DialogHeader>
-        <form action={handleSubmit} className="space-y-4">
-          {/* Facility Name */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">
-              Facility Name
-            </label>
-            <Input
-              name="name"
-              placeholder="e.g. St. Luke's Medical Center"
-              required
-            />
+
+      <DialogContent className="p-0 gap-0 overflow-hidden rounded-2xl max-w-md">
+        {/* ── Modal Header ──────────────────────────────────────── */}
+        <div className="bg-[#2db0b0] px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <Building2 className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <DialogTitle className="text-white text-base font-semibold">
+                Add New Facility
+              </DialogTitle>
+              <p className="text-teal-100 text-xs mt-0.5">
+                Fill in the details to register a new facility
+              </p>
+            </div>
           </div>
+        </div>
+
+        {/* ── Modal Body ────────────────────────────────────────── */}
+        <form action={handleSubmit} className="px-6 py-5 space-y-4">
+          {/* Facility Name */}
+          <FieldWrapper label="Facility Name">
+            <div className="relative">
+              <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <Input
+                name="name"
+                placeholder="e.g. St. Luke's Medical Center"
+                required
+                className="pl-9 border-slate-200 focus-visible:ring-[#2db0b0] text-sm"
+              />
+            </div>
+          </FieldWrapper>
 
           {/* Facility Type */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Type</label>
+          <FieldWrapper label="Facility Type">
             <Select value={type} onValueChange={setType} required>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full border-slate-200 focus:ring-[#2db0b0] text-sm">
                 <SelectValue placeholder="Select facility type" />
               </SelectTrigger>
               <SelectContent>
@@ -80,37 +138,53 @@ export function AddFacilityModal() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </FieldWrapper>
 
           {/* Contact Person */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">
-              Contact Person
-            </label>
-            <Input
-              name="contact"
-              placeholder="e.g. Dr. Juan dela Cruz"
-              required
-            />
-          </div>
+          <FieldWrapper label="Contact Person">
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <Input
+                name="contact"
+                placeholder="e.g. Dr. Juan dela Cruz"
+                required
+                className="pl-9 border-slate-200 focus-visible:ring-[#2db0b0] text-sm"
+              />
+            </div>
+          </FieldWrapper>
 
           {/* Phone */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-700">Phone</label>
-            <Input
-              name="phone"
-              type="tel"
-              placeholder="e.g. +63 912 345 6789"
-              required
-            />
-          </div>
+          <FieldWrapper label="Phone">
+            <div className="relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+              <Input
+                name="phone"
+                type="tel"
+                placeholder="e.g. +63 912 345 6789"
+                required
+                className="pl-9 border-slate-200 focus-visible:ring-[#2db0b0] text-sm"
+              />
+            </div>
+          </FieldWrapper>
 
-          <Button
-            type="submit"
-            className="w-full bg-[#2db0b0] hover:bg-[#249191] text-white"
-          >
-            Save Facility
-          </Button>
+          {/* ── Actions ───────────────────────────────────────── */}
+          <div className="flex gap-2 pt-1">
+            <Button
+              type="button"
+              variant="outline"
+              className="flex-1 border-slate-200 text-slate-600 hover:bg-slate-50 text-sm"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="flex-1 bg-[#2db0b0] hover:bg-[#249191] text-white text-sm shadow-sm"
+            >
+              {loading ? "Saving..." : "Save Facility"}
+            </Button>
+          </div>
         </form>
       </DialogContent>
     </Dialog>
