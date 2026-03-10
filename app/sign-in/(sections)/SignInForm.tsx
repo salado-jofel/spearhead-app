@@ -129,12 +129,12 @@ export default function SignInForm() {
                 Remember me
               </label>
             </div>
-            <Link
+            {/* <Link
               href="#"
               className="text-sm font-medium text-emerald-500 hover:text-emerald-600"
             >
               Forgot password?
-            </Link>
+            </Link> */}
           </div>
 
           {/* Action Buttons */}
