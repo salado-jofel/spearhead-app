@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { Loader2, LogIn } from "lucide-react";
-import React, { ReactNode } from "react";
+import { Loader2 } from "lucide-react";
+import { ReactNode } from "react";
 
 export default function SubmitButton({
   isPending,

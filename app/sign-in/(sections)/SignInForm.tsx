@@ -1,23 +1,11 @@
 "use client";
 
 import React, { useActionState, useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  LogIn,
-  UserPlus,
-  ArrowLeft,
-  AlertCircle,
-  Loader2,
-} from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, UserPlus, ArrowLeft } from "lucide-react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { login } from "../actions";
 import SubmitButton from "@/app/(components)/SubmitButton";
 import ErrorAlert from "@/app/(components)/ErrorAlert";
@@ -50,7 +38,7 @@ export default function SignInForm() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 p-4 select-none">
-      <div className="w-full max-w-[440px] bg-white rounded-2xl shadow-xl shadow-slate-200/60 p-8 md:p-12 border border-slate-100">
+      <div className="w-full max-w-110 bg-white rounded-2xl shadow-xl shadow-slate-200/60 p-8 md:p-12 border border-slate-100">
         {/* Logo and Header */}
         <div className="flex flex-col items-center text-center mb-10">
           <div className="w-12 h-12 text-emerald-500 mb-4">

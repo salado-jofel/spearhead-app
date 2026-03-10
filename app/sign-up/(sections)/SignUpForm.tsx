@@ -155,6 +155,14 @@ export default function SignUpForm() {
             {state?.error && <ErrorAlert errorMessage={state.error} />}
           </div>
         </form>
+        <div className="mt-10 text-center">
+          <Link
+            href="/sign-in"
+            className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-emerald-500 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Sign In
+          </Link>
+        </div>
       </div>
     </div>
   );

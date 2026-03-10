@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -8,11 +9,11 @@ import {
   UserCircle,
   Megaphone,
   FileText,
-  LogOut,
+  User,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Button } from "@/components/ui/button";
+import { createClient } from "@/utils/supabase/client"; // Adjust path to your supabase client
 import { SignOutButton } from "../(components)/SignOutButton";
 
 const navItems = [
@@ -27,6 +28,41 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const supabase = createClient();
+
+  // State for user data
+  const [userData, setUserData] = useState<{
+    name: string;
+    email: string;
+    initials: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      if (user) {
+        // Get name from metadata (stored during signup)
+        const firstName = user.user_metadata?.first_name || "";
+        const lastName = user.user_metadata?.last_name || "";
+        const fullName = `${firstName} ${lastName}`.trim() || "User";
+
+        // Generate initials
+        const initials =
+          `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase() || "U";
+
+        setUserData({
+          name: fullName,
+          email: user.email || "",
+          initials: initials,
+        });
+      }
+    };
+
+    getUser();
+  }, [supabase]);
 
   return (
     <aside className="w-64 bg-white border-r border-slate-100 flex flex-col fixed h-full z-40">
@@ -68,15 +104,17 @@ export function Sidebar() {
       {/* Footer Profile & Logout */}
       <div className="p-4 border-t border-slate-50 bg-white">
         <div className="flex items-center gap-3 p-3 rounded-xl bg-[#f8fafb] border border-slate-100 mb-3">
+          {/* Dynamic Initials Avatar */}
           <div className="w-10 h-10 rounded-full bg-[#1db0b0] flex items-center justify-center text-white font-bold text-sm shadow-sm">
-            JS
+            {userData?.initials || <User className="w-5 h-5" />}
           </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-bold text-[#1e293b] leading-tight">
-              Jofel Salado
+
+          <div className="flex flex-col overflow-hidden">
+            <span className="text-sm font-bold text-[#1e293b] leading-tight truncate">
+              {userData?.name || "Loading..."}
             </span>
-            <span className="text-[11px] text-slate-500 font-medium">
-              Sales Representative
+            <span className="text-[10px] text-slate-500 font-medium truncate">
+              {userData?.email || "Sales Representative"}
             </span>
           </div>
         </div>
