@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { updateProfileInStore } from "../(redux)/profile-slice";
 import { updateProfile } from "../actions";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import SubmitButton from "@/app/(components)/SubmitButton";
 import { User, Mail, Phone, Save } from "lucide-react";
 import { useState } from "react";
 
@@ -32,19 +32,22 @@ export default function ProfileForm() {
   const profile = useAppSelector((state) => state.profile.item);
   const [saving, setSaving] = useState(false);
 
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
     setSaving(true);
     try {
-      const updated = {
-        first_name: formData.get("first_name") as string,
-        last_name: formData.get("last_name") as string,
-        email: formData.get("email") as string,
-        phone: formData.get("phone") as string,
-      };
-
-      // optimistic update
-      dispatch(updateProfileInStore(updated));
       await updateProfile(formData);
+
+      dispatch(
+        updateProfileInStore({
+          first_name: formData.get("first_name") as string,
+          last_name: formData.get("last_name") as string,
+          email: formData.get("email") as string,
+          phone: formData.get("phone") as string,
+        }),
+      );
     } catch (err) {
       console.error("[ProfileForm] Error:", err);
     } finally {
@@ -54,7 +57,7 @@ export default function ProfileForm() {
 
   return (
     <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
-      <form action={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {/* ── Row: First Name + Last Name ─────────────────────── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
@@ -63,6 +66,7 @@ export default function ProfileForm() {
               name="first_name"
               defaultValue={profile?.first_name ?? ""}
               placeholder="First name"
+              disabled={saving}
               className="border-slate-200 focus-visible:ring-[#2db0b0]"
             />
           </div>
@@ -72,6 +76,7 @@ export default function ProfileForm() {
               name="last_name"
               defaultValue={profile?.last_name ?? ""}
               placeholder="Last name"
+              disabled={saving}
               className="border-slate-200 focus-visible:ring-[#2db0b0]"
             />
           </div>
@@ -85,6 +90,7 @@ export default function ProfileForm() {
             type="email"
             defaultValue={profile?.email ?? ""}
             placeholder="email@example.com"
+            disabled={saving}
             className="border-slate-200 focus-visible:ring-[#2db0b0]"
           />
         </div>
@@ -97,19 +103,26 @@ export default function ProfileForm() {
             type="tel"
             defaultValue={profile?.phone ?? ""}
             placeholder="+63 9XX XXX XXXX"
+            disabled={saving}
             className="border-slate-200 focus-visible:ring-[#2db0b0]"
           />
         </div>
 
         {/* ── Save Button ─────────────────────────────────────── */}
-        <Button
+        <SubmitButton
           type="submit"
-          disabled={saving}
-          className="bg-[#2db0b0] hover:bg-[#249191] text-white"
-        >
-          <Save className="w-4 h-4 mr-2" />
-          {saving ? "Saving..." : "Save Changes"}
-        </Button>
+          isPending={saving}
+          isPendingMesssage="Saving..."
+          cta={
+            <>
+              <Save className="w-4 h-4 mr-2" />
+              Save Changes
+            </>
+          }
+          variant={null}
+          size="default"
+          classname="bg-[#2db0b0] hover:bg-[#249191] text-white"
+        />
       </form>
     </div>
   );
