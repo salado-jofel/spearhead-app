@@ -1,11 +1,12 @@
 "use client";
 
-import { useAppSelector } from "@/store/hooks";
+import { useState } from "react";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Trash2, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import ConfirmModal from "@/app/(components)/ConfirmModal";
 import { deleteFacility } from "../actions";
-import { useAppDispatch } from "@/store/hooks";
 import { clearFacility } from "../(redux)/facility-slice";
 import { StatusBadge } from "../../../(components)/StatusBadge";
 
@@ -14,60 +15,81 @@ export default function Header() {
   const dispatch = useAppDispatch();
   const item = useAppSelector((state) => state.facility.item);
 
-  async function handleDelete() {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  async function handleConfirmDelete() {
     if (!item?.id) return;
-    dispatch(clearFacility());
-    await deleteFacility(item.id);
-    router.push("/dashboard/facilities");
+    setIsDeleting(true);
+    try {
+      await deleteFacility(item.id);
+      dispatch(clearFacility());
+      router.push("/dashboard/facilities");
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   return (
-    <div className="space-y-6 ">
-      {/* ── Back Button ── */}
-      <button
-        type="button"
-        onClick={() => router.push("/dashboard/facilities")}
-        className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-[#2db0b0] transition-colors group"
-      >
-        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-        Back to Facilities
-      </button>
+    <>
+      <ConfirmModal
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete Facility?"
+        description={`"${item?.name}" and all its products will be permanently removed. This action cannot be undone.`}
+        confirmLabel="Delete"
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+      />
 
-      {/* ── Hero Card ── */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            {/* ── Icon Avatar ── */}
-            <div className="w-14 h-14 rounded-xl bg-[#2db0b0]/10 flex items-center justify-center shrink-0">
-              <Building2 className="w-7 h-7 text-[#2db0b0]" />
-            </div>
+      <div className="space-y-6">
+        {/* ── Back Button ── */}
+        <button
+          type="button"
+          onClick={() => router.push("/dashboard/facilities")}
+          className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-[#2db0b0] transition-colors group"
+        >
+          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+          Back to Facilities
+        </button>
 
-            {/* ── Name + Meta ── */}
-            <div className="space-y-1">
-              <h1 className="text-2xl font-bold text-slate-800">
-                {item?.name ?? "—"}
-              </h1>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">
-                  {item?.type ?? "—"}
-                </span>
-                {item?.status && <StatusBadge status={item.status} />}
+        {/* ── Hero Card ── */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {/* ── Icon Avatar ── */}
+              <div className="w-14 h-14 rounded-xl bg-[#2db0b0]/10 flex items-center justify-center shrink-0">
+                <Building2 className="w-7 h-7 text-[#2db0b0]" />
+              </div>
+
+              {/* ── Name + Meta ── */}
+              <div className="space-y-1">
+                <h1 className="text-2xl font-bold text-slate-800">
+                  {item?.name ?? "—"}
+                </h1>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-slate-400 bg-slate-100 px-2.5 py-0.5 rounded-full">
+                    {item?.type ?? "—"}
+                  </span>
+                  {item?.status && <StatusBadge status={item.status} />}
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* ── Delete Button ── */}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleDelete}
-            className="text-red-400 border-red-200 hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all"
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            Delete Facility
-          </Button>
+            {/* ── Delete Button ── */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmOpen(true)}
+              disabled={isDeleting}
+              className="text-red-400 border-red-200 hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all disabled:opacity-50"
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Facility
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

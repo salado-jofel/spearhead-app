@@ -140,7 +140,10 @@ export async function getProductsByFacilityId(
 /**
  * CREATE: Adds a new product to a facility
  */
-export async function addProduct(facilityId: string, formData: FormData) {
+export async function addProduct(
+  facilityId: string,
+  formData: FormData,
+): Promise<Product> {
   try {
     const payload: InsertProductPayload = {
       name: formData.get("name") as string,
@@ -158,7 +161,37 @@ export async function addProduct(facilityId: string, formData: FormData) {
       throw new Error("Failed to add product");
     }
 
+    // ── Fetch the row we just inserted ──────────────────────
+    const { data, error: fetchError } = await dbSelect<{
+      id: string;
+      created_at: string;
+      name: string;
+      price: number;
+      facility_id: string;
+      facilities: { name: string } | null;
+    }>({
+      table: PRODUCT_TABLE,
+      columns: PRODUCT_COLUMNS,
+      filter: { column: "facility_id", value: facilityId },
+      order: { column: "created_at", ascending: false },
+    });
+
+    if (fetchError || !data?.[0]) {
+      throw new Error("Failed to retrieve created product");
+    }
+
+    const row = data[0];
+
     revalidatePath(getFacilityPath(facilityId));
+
+    return {
+      id: row.id,
+      created_at: row.created_at,
+      name: row.name,
+      price: row.price,
+      facility_id: row.facility_id,
+      facility_name: row.facilities?.name ?? "—",
+    };
   } catch (err) {
     console.error("[addProduct] Unexpected error:", err);
     throw new Error("An unexpected error occurred while adding the product");

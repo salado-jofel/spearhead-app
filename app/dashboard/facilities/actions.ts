@@ -31,9 +31,9 @@ export async function getFacilities(): Promise<Facility[]> {
 }
 
 /**
- * CREATE: Adds a new facility
+ * CREATE: Adds a new facility and returns the created row
  */
-export async function addFacility(formData: FormData) {
+export async function addFacility(formData: FormData): Promise<Facility> {
   try {
     const payload: InsertFacilityPayload = {
       name: formData.get("name") as string,
@@ -53,7 +53,20 @@ export async function addFacility(formData: FormData) {
       throw new Error("Failed to create facility");
     }
 
+    // ── Fetch the row we just inserted ──────────────────────
+    const { data, error: fetchError } = await dbSelect<Facility>({
+      table: FACILITY_TABLE,
+      columns: FACILITY_COLUMNS,
+      filter: { column: "name", value: payload.name },
+      order: { column: "created_at", ascending: false },
+    });
+
+    if (fetchError || !data?.[0]) {
+      throw new Error("Failed to retrieve created facility");
+    }
+
     revalidatePath(FACILITY_PATH);
+    return data[0];
   } catch (err) {
     console.error("[addFacility] Unexpected error:", err);
     throw new Error("An unexpected error occurred while creating the facility");

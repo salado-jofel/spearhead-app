@@ -21,6 +21,7 @@ import { Building2, Phone, Plus, User } from "lucide-react";
 import { addFacility } from "../actions";
 import { useAppDispatch } from "@/store/hooks";
 import { addFacilityToStore } from "../(redux)/facilities-slice";
+import SubmitButton from "@/app/(components)/SubmitButton";
 import type { Facility } from "@/app/(interfaces)/facility";
 
 const FACILITY_TYPES: string[] = [
@@ -54,36 +55,30 @@ export function AddFacilityModal() {
   const dispatch = useAppDispatch();
   const [open, setOpen] = useState<boolean>(false);
   const [type, setType] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   async function handleSubmit(formData: FormData) {
     formData.set("type", type);
-    setLoading(true);
-
-    // ── Optimistic update ──────────────────────────────────────
-    const optimistic: Facility = {
-      id: crypto.randomUUID(),
-      name: formData.get("name") as string,
-      type: formData.get("type") as string,
-      contact: formData.get("contact") as string,
-      phone: formData.get("phone") as string,
-      status: "Active",
-    };
-    dispatch(addFacilityToStore(optimistic));
-    setOpen(false);
-    setType("");
-
+    setIsSubmitting(true);
     try {
-      await addFacility(formData);
+      const created: Facility = await addFacility(formData);
+      dispatch(addFacilityToStore(created));
+      setOpen(false);
+      setType("");
     } catch (err) {
       console.error("[AddFacilityModal] Error:", err);
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(val) => {
+        if (!isSubmitting) setOpen(val);
+      }}
+    >
       <DialogTrigger asChild>
         <Button className="bg-[#2db0b0] hover:bg-[#249191] text-white shadow-sm">
           <Plus className="w-4 h-4 mr-2" />
@@ -92,7 +87,7 @@ export function AddFacilityModal() {
       </DialogTrigger>
 
       <DialogContent className="p-0 gap-0 overflow-hidden rounded-2xl max-w-md">
-        {/* ── Modal Header ──────────────────────────────────────── */}
+        {/* ── Modal Header ── */}
         <div className="bg-[#2db0b0] px-6 py-5">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-lg">
@@ -109,8 +104,15 @@ export function AddFacilityModal() {
           </div>
         </div>
 
-        {/* ── Modal Body ────────────────────────────────────────── */}
-        <form action={handleSubmit} className="px-6 py-5 space-y-4">
+        {/* ── Modal Body ── */}
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.currentTarget);
+            await handleSubmit(formData);
+          }}
+          className="px-6 py-5 space-y-4"
+        >
           {/* Facility Name */}
           <FieldWrapper label="Facility Name">
             <div className="relative">
@@ -119,6 +121,7 @@ export function AddFacilityModal() {
                 name="name"
                 placeholder="e.g. St. Luke's Medical Center"
                 required
+                disabled={isSubmitting}
                 className="pl-9 border-slate-200 focus-visible:ring-[#2db0b0] text-sm"
               />
             </div>
@@ -126,7 +129,12 @@ export function AddFacilityModal() {
 
           {/* Facility Type */}
           <FieldWrapper label="Facility Type">
-            <Select value={type} onValueChange={setType} required>
+            <Select
+              value={type}
+              onValueChange={setType}
+              required
+              disabled={isSubmitting}
+            >
               <SelectTrigger className="w-full border-slate-200 focus:ring-[#2db0b0] text-sm">
                 <SelectValue placeholder="Select facility type" />
               </SelectTrigger>
@@ -148,6 +156,7 @@ export function AddFacilityModal() {
                 name="contact"
                 placeholder="e.g. Dr. Juan dela Cruz"
                 required
+                disabled={isSubmitting}
                 className="pl-9 border-slate-200 focus-visible:ring-[#2db0b0] text-sm"
               />
             </div>
@@ -162,28 +171,32 @@ export function AddFacilityModal() {
                 type="tel"
                 placeholder="e.g. +63 912 345 6789"
                 required
+                disabled={isSubmitting}
                 className="pl-9 border-slate-200 focus-visible:ring-[#2db0b0] text-sm"
               />
             </div>
           </FieldWrapper>
 
-          {/* ── Actions ───────────────────────────────────────── */}
+          {/* ── Actions ── */}
           <div className="flex gap-2 pt-1">
             <Button
               type="button"
               variant="outline"
-              className="flex-1 border-slate-200 text-slate-600 hover:bg-slate-50 text-sm"
+              disabled={isSubmitting}
+              className="flex-1 border-slate-200 text-slate-600 hover:bg-slate-50 text-sm disabled:opacity-50"
               onClick={() => setOpen(false)}
             >
               Cancel
             </Button>
-            <Button
+            <SubmitButton
               type="submit"
-              disabled={loading}
-              className="flex-1 bg-[#2db0b0] hover:bg-[#249191] text-white text-sm shadow-sm"
-            >
-              {loading ? "Saving..." : "Save Facility"}
-            </Button>
+              isPending={isSubmitting}
+              isPendingMesssage="Saving..."
+              cta="Save Facility"
+              variant={null}
+              size="default"
+              classname="flex-1 bg-[#2db0b0] hover:bg-[#249191] text-white text-sm shadow-sm"
+            />
           </div>
         </form>
       </DialogContent>

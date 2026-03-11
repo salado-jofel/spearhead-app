@@ -8,8 +8,17 @@ import {
 import { updateOrderStatus, deleteOrder } from "../actions";
 import type { Order, OrderStatus } from "@/app/(interfaces)/order";
 import { ORDER_STATUSES } from "@/app/(interfaces)/order";
-import { Trash2, Package, Building2, User, ChevronRight } from "lucide-react";
-import { useMemo } from "react";
+import {
+  Trash2,
+  Package,
+  Building2,
+  User,
+  ChevronRight,
+  Loader2,
+} from "lucide-react";
+import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import ConfirmModal from "@/app/(components)/ConfirmModal";
 
 // ─── Status color config ──────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<
@@ -52,96 +61,148 @@ const STATUS_CONFIG: Record<
 function OrderCard({ order }: { order: Order }) {
   const dispatch = useAppDispatch();
   const config = STATUS_CONFIG[order.status];
+  const [isAdvancing, setIsAdvancing] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
 
   async function handleAdvance() {
-    if (!order.id || !config.next) return;
+    if (!order.id || !config.next || isAdvancing) return;
+    setIsAdvancing(true);
 
-    const updated: Order = { ...order, status: config.next };
-    dispatch(updateOrderInStore(updated));
+    try {
+      // ── 1. Server first ─────────────────────────────────────────
+      const formData = new FormData();
+      formData.set("status", config.next);
+      await updateOrderStatus(order.id, formData);
 
-    const formData = new FormData();
-    formData.set("status", config.next);
-    await updateOrderStatus(order.id, formData);
+      // ── 2. Only update Redux after server confirms success ───────
+      const updated: Order = { ...order, status: config.next };
+      dispatch(updateOrderInStore(updated));
+    } catch (err) {
+      console.error("[handleAdvance] Error:", err);
+    } finally {
+      setIsAdvancing(false);
+    }
   }
 
   async function handleDelete() {
     if (!order.id) return;
-    dispatch(removeOrderFromStore(order.id));
-    await deleteOrder(order.id);
+    setIsDeleting(true);
+
+    try {
+      // ── 1. Server first ─────────────────────────────────────────
+      await deleteOrder(order.id);
+
+      // ── 2. Only remove from Redux after server confirms success ──
+      dispatch(removeOrderFromStore(order.id));
+    } catch (err) {
+      console.error("[handleDelete] Error:", err);
+    } finally {
+      setIsDeleting(false);
+      setConfirmOpen(false);
+    }
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-sm hover:shadow-md transition-shadow">
-      {/* ── Top Row ── */}
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-[#2db0b0] tracking-wide">
-          {order.order_id}
-        </span>
-        <button
-          type="button"
-          onClick={handleDelete}
-          className="p-1 text-slate-300 hover:text-red-500 transition-colors rounded"
-          title="Delete order"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
-      </div>
+    <>
+      {/* ── Confirm Delete Modal ─────────────────────────────────── */}
+      <ConfirmModal
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete Order?"
+        description={`Order ${order.order_id} will be permanently deleted and cannot be recovered.`}
+        confirmLabel="Delete"
+        isLoading={isDeleting}
+        onConfirm={handleDelete}
+      />
 
-      {/* ── Product ── */}
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-lg bg-[#2db0b0]/10 flex items-center justify-center shrink-0">
-          <Package className="w-3.5 h-3.5 text-[#2db0b0]" />
+      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-sm hover:shadow-md transition-shadow">
+        {/* ── Top Row ── */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-[#2db0b0] tracking-wide">
+            {order.order_id}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            onClick={() => setConfirmOpen(true)}
+            disabled={isDeleting}
+            className="h-6 w-6 text-slate-300 hover:text-red-500 hover:bg-red-50"
+            title="Delete order"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </Button>
         </div>
-        <span className="text-sm font-medium text-slate-700 truncate">
-          {order.product_name}
-        </span>
-      </div>
 
-      {/* ── Facility ── */}
-      <div className="flex items-center gap-2">
-        <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-          <Building2 className="w-3.5 h-3.5 text-slate-400" />
-        </div>
-        <span className="text-xs text-slate-500 truncate">
-          {order.facility_name}
-        </span>
-      </div>
-
-      {/* ── Created By ── */}
-      {order.created_by_email && (
+        {/* ── Product ── */}
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-            <User className="w-3.5 h-3.5 text-slate-400" />
+          <div className="w-7 h-7 rounded-lg bg-[#2db0b0]/10 flex items-center justify-center shrink-0">
+            <Package className="w-3.5 h-3.5 text-[#2db0b0]" />
           </div>
-          <span className="text-xs text-slate-400 truncate">
-            {order.created_by_email}
+          <span className="text-sm font-medium text-slate-700 truncate">
+            {order.product_name}
           </span>
         </div>
-      )}
 
-      {/* ── Divider ── */}
-      <div className="border-t border-slate-100" />
+        {/* ── Facility ── */}
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+            <Building2 className="w-3.5 h-3.5 text-slate-400" />
+          </div>
+          <span className="text-xs text-slate-500 truncate">
+            {order.facility_name}
+          </span>
+        </div>
 
-      {/* ── Bottom Row ── */}
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-bold text-slate-800">
-          ${Number(order.amount).toFixed(2)}
-        </span>
-
-        {/* ── Advance Status Button ── */}
-        {config.next && (
-          <button
-            type="button"
-            onClick={handleAdvance}
-            className="flex items-center gap-1 text-xs text-[#2db0b0] hover:text-[#249191] font-medium transition-colors"
-            title={`Move to ${config.next}`}
-          >
-            {config.next}
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+        {/* ── Created By ── */}
+        {order.created_by_email && (
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+              <User className="w-3.5 h-3.5 text-slate-400" />
+            </div>
+            <span className="text-xs text-slate-400 truncate">
+              {order.created_by_email}
+            </span>
+          </div>
         )}
+
+        {/* ── Divider ── */}
+        <div className="border-t border-slate-100" />
+
+        {/* ── Bottom Row ── */}
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-bold text-slate-800">
+            ${Number(order.amount).toFixed(2)}
+          </span>
+
+          {/* ── Advance Status Button ── */}
+          {config.next && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleAdvance}
+              disabled={isAdvancing}
+              className="h-7 px-2 text-xs text-[#2db0b0] hover:text-[#249191] hover:bg-teal-50 font-medium"
+              title={`Move to ${config.next}`}
+            >
+              {isAdvancing ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                  Moving...
+                </>
+              ) : (
+                <>
+                  {config.next}
+                  <ChevronRight className="w-3.5 h-3.5 ml-1" />
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 

@@ -11,13 +11,13 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Plus, Hash, Building2, Package, DollarSign } from "lucide-react";
-import { addOrder } from "../actions";
+import { addOrder, getActiveFacilities, getAllProducts } from "../actions";
 import { useAppDispatch } from "@/store/hooks";
 import { addOrderToStore } from "../(redux)/orders-slice";
 import type { Order } from "@/app/(interfaces)/order";
 import type { Facility } from "@/app/(interfaces)/facility";
 import type { Product } from "@/app/(interfaces)/product";
-import { createClient } from "@/utils/supabase/client";
+import SubmitButton from "@/app/(components)/SubmitButton";
 
 export function CreateOrderModal() {
   const dispatch = useAppDispatch();
@@ -27,6 +27,7 @@ export function CreateOrderModal() {
   const [facilityId, setFacilityId] = useState<string>("");
   const [productId, setProductId] = useState<string>("");
   const [orderId, setOrderId] = useState<string>("");
+  const [isPending, setIsPending] = useState<boolean>(false);
 
   // ── Generate next order ID ───────────────────────────────────────
   useEffect(() => {
@@ -34,19 +35,17 @@ export function CreateOrderModal() {
     setOrderId(`ORD-${pad(Math.floor(Math.random() * 999) + 1)}`);
   }, [open]);
 
-  // ── Fetch facilities and products for dropdowns ──────────────────
+  // ── Fetch facilities and products via server actions ─────────────
   useEffect(() => {
     if (!open) return;
 
-    const supabase = createClient();
-
     async function fetchData() {
-      const [{ data: fData }, { data: pData }] = await Promise.all([
-        supabase.from("facilities").select("id, name").eq("status", "Active"),
-        supabase.from("products").select("id, name, price, facility_id"),
+      const [fetchedFacilities, fetchedProducts] = await Promise.all([
+        getActiveFacilities(),
+        getAllProducts(),
       ]);
-      setFacilities((fData as Facility[]) ?? []);
-      setProducts((pData as Product[]) ?? []);
+      setFacilities(fetchedFacilities);
+      setProducts(fetchedProducts);
     }
 
     fetchData();
@@ -59,7 +58,17 @@ export function CreateOrderModal() {
 
   const selectedProduct = products.find((p) => p.id === productId);
 
-  async function handleSubmit(formData: FormData) {
+  function resetForm() {
+    setFacilityId("");
+    setProductId("");
+  }
+
+  // ── Use onSubmit instead of action to properly await ────────────
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setIsPending(true);
+
+    const formData = new FormData(e.currentTarget);
     formData.set("order_id", orderId);
     formData.set("facility_id", facilityId);
     formData.set("product_id", productId);
@@ -76,18 +85,27 @@ export function CreateOrderModal() {
       product_name: selectedProduct?.name ?? "—",
     };
 
-    dispatch(addOrderToStore(optimistic));
-    setOpen(false);
-    setFacilityId("");
-    setProductId("");
-
-    await addOrder(formData);
+    try {
+      await addOrder(formData);
+      dispatch(addOrderToStore(optimistic));
+      resetForm();
+      setOpen(false);
+    } catch (err) {
+      console.error("[CreateOrderModal] Error:", err);
+    } finally {
+      setIsPending(false);
+    }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open}
+      onOpenChange={(val) => {
+        if (!isPending) setOpen(val);
+      }}
+    >
       <DialogTrigger asChild>
-        <Button className="bg-[#2db0b0] hover:bg-[#249191] text-white">
+        <Button className="bg-[#2db0b0] hover:bg-[#249191] text-white cursor-pointer">
           <Plus className="w-4 h-4 mr-2" />
           New Order
         </Button>
@@ -99,8 +117,9 @@ export function CreateOrderModal() {
           </DialogTitle>
         </DialogHeader>
 
-        <form action={handleSubmit} className="space-y-4 pt-2">
-          {/* Order ID */}
+        {/* ── onSubmit instead of action ────────────────────────── */}
+        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+          {/* ── Order ID ──────────────────────────────────────── */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Hash className="w-4 h-4 text-[#2db0b0]" />
@@ -117,7 +136,7 @@ export function CreateOrderModal() {
             />
           </div>
 
-          {/* Facility */}
+          {/* ── Facility ──────────────────────────────────────── */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Building2 className="w-4 h-4 text-[#2db0b0]" />
@@ -127,10 +146,11 @@ export function CreateOrderModal() {
               value={facilityId}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                 setFacilityId(e.target.value);
-                setProductId(""); // reset product on facility change
+                setProductId("");
               }}
               required
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
+              disabled={isPending}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white disabled:opacity-50"
             >
               <option value="">Select facility</option>
               {facilities.map((f) => (
@@ -141,7 +161,7 @@ export function CreateOrderModal() {
             </select>
           </div>
 
-          {/* Product */}
+          {/* ── Product ───────────────────────────────────────── */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Package className="w-4 h-4 text-[#2db0b0]" />
@@ -153,7 +173,8 @@ export function CreateOrderModal() {
                 setProductId(e.target.value)
               }
               required
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
+              disabled={isPending}
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white disabled:opacity-50"
             >
               <option value="">Select product</option>
               {filteredProducts.map((p) => (
@@ -164,7 +185,7 @@ export function CreateOrderModal() {
             </select>
           </div>
 
-          {/* Amount */}
+          {/* ── Amount ────────────────────────────────────────── */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <DollarSign className="w-4 h-4 text-[#2db0b0]" />
@@ -177,27 +198,36 @@ export function CreateOrderModal() {
               step="0.01"
               placeholder="0.00"
               defaultValue={selectedProduct?.price ?? ""}
+              disabled={isPending}
               required
             />
           </div>
 
-          {/* Actions */}
+          {/* ── Actions ───────────────────────────────────────── */}
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => setOpen(false)}
               className="text-slate-600"
+              disabled={isPending}
             >
               Cancel
             </Button>
-            <Button
+            <SubmitButton
               type="submit"
-              className="bg-[#2db0b0] hover:bg-[#249191] text-white"
-            >
-              <Plus className="w-4 h-4 mr-1.5" />
-              Create Order
-            </Button>
+              isPending={isPending}
+              cta={
+                <>
+                  <Plus className="w-4 h-4 mr-1.5" />
+                  Create Order
+                </>
+              }
+              isPendingMesssage="Creating..."
+              variant="default"
+              size="default"
+              classname="bg-[#2db0b0] hover:bg-[#249191] text-white"
+            />
           </div>
         </form>
       </DialogContent>

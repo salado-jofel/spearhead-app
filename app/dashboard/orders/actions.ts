@@ -8,6 +8,8 @@ import type {
   InsertOrderPayload,
   UpdateOrderPayload,
 } from "@/app/(interfaces)/order";
+import { Facility } from "@/app/(interfaces)/facility";
+import { Product } from "@/app/(interfaces)/product";
 
 const ORDER_TABLE = "orders";
 const ORDER_COLUMNS =
@@ -194,4 +196,42 @@ export async function deleteOrder(orderId: string) {
     console.error("[deleteOrder] Unexpected error:", err);
     throw new Error("An unexpected error occurred while deleting the order");
   }
+}
+
+
+/**
+ * READ: Fetches active facilities for order form dropdown
+ */
+export async function getActiveFacilities(): Promise<Facility[]> {
+  const { data, error } = await dbSelect<Facility>({
+    table: "facilities",
+    columns: "id, name, status",       // ← add status
+    order: { column: "name", ascending: true },
+  });
+
+  if (error) {
+    console.error("[getActiveFacilities] Supabase error:", error.message);
+    return [];
+  }
+
+  return (data ?? []).filter((f) => f.status === "Active");
+}
+
+
+/**
+ * READ: Fetches all products for order form dropdown
+ */
+export async function getAllProducts(): Promise<Product[]> {
+  const { data, error } = await dbSelect<Product>({
+    table: "products",
+    columns: "id, name, price, facility_id",
+    order: { column: "name", ascending: true },
+  });
+
+  if (error) {
+    console.error("[getAllProducts] Supabase error:", error.message);
+    return [];
+  }
+
+  return data ?? [];
 }

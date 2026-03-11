@@ -11,6 +11,8 @@ export default function SubmitButton({
   size,
   classname,
   asChild,
+  onClick,
+  form,
 }: {
   isPending?: boolean;
   type: "button" | "submit" | "reset" | undefined;
@@ -38,6 +40,8 @@ export default function SubmitButton({
     | undefined;
   classname?: string;
   asChild?: boolean;
+  onClick?: () => void;
+  form?: string;
 }) {
   return (
     <Button
@@ -47,6 +51,8 @@ export default function SubmitButton({
       variant={variant}
       size={size}
       className={`${classname} duration-200 cursor-pointer`}
+      onClick={onClick}
+      form={form}
     >
       {isPending ? (
         <>

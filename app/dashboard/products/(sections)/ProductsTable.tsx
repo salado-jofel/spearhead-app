@@ -9,6 +9,8 @@ import {
 import { editProduct, deleteProduct } from "../actions";
 import type { Product } from "@/app/(interfaces)/product";
 import { Input } from "@/components/ui/input";
+import SubmitButton from "@/app/(components)/SubmitButton";
+import ConfirmModal from "@/app/(components)/ConfirmModal";
 import { Package, Building2, Trash2, Pencil, X, Check } from "lucide-react";
 
 // ─── Product Row ──────────────────────────────────────────────────────────────
@@ -18,28 +20,43 @@ function ProductRow({ product }: { product: Product }) {
   const [name, setName] = useState<string>(product.name);
   const [price, setPrice] = useState<string>(String(product.price));
 
+  const [isSaving, setIsSaving] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // ── Save edited product ──────────────────────────────────
   async function handleSave() {
     if (!product.id) return;
-
-    const updated: Product = {
-      ...product,
-      name,
-      price: parseFloat(price) || 0,
-    };
-
-    dispatch(updateProductInStore(updated));
-    setIsEditing(false);
-
-    const formData = new FormData();
-    formData.set("name", name);
-    formData.set("price", price);
-    await editProduct(product.id, formData);
+    setIsSaving(true);
+    try {
+      const formData = new FormData();
+      formData.set("name", name);
+      formData.set("price", price);
+      await editProduct(product.id, formData);
+      dispatch(
+        updateProductInStore({
+          ...product,
+          name,
+          price: parseFloat(price) || 0,
+        }),
+      );
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
-  async function handleDelete() {
+  // ── Confirmed delete ─────────────────────────────────────
+  async function handleConfirmDelete() {
     if (!product.id) return;
-    dispatch(removeProductFromStore(product.id));
-    await deleteProduct(product.id);
+    setIsDeleting(true);
+    try {
+      await deleteProduct(product.id);
+      dispatch(removeProductFromStore(product.id));
+      setConfirmOpen(false);
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   function handleCancel() {
@@ -49,117 +66,141 @@ function ProductRow({ product }: { product: Product }) {
   }
 
   return (
-    <tr className="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0">
-      {/* Name */}
-      <td className="px-4 py-3">
-        {isEditing ? (
-          <Input
-            value={name}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setName(e.target.value)
-            }
-            className="h-8 text-sm"
-          />
-        ) : (
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-[#2db0b0]/10 flex items-center justify-center shrink-0">
-              <Package className="w-4 h-4 text-[#2db0b0]" />
+    <>
+      <ConfirmModal
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete Product?"
+        description={`"${product.name}" will be permanently removed. This action cannot be undone.`}
+        confirmLabel="Delete"
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+      />
+
+      <tr className="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0">
+        {/* Name */}
+        <td className="px-4 py-3">
+          {isEditing ? (
+            <Input
+              value={name}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setName(e.target.value)
+              }
+              className="h-8 text-sm"
+              disabled={isSaving}
+            />
+          ) : (
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-[#2db0b0]/10 flex items-center justify-center shrink-0">
+                <Package className="w-4 h-4 text-[#2db0b0]" />
+              </div>
+              <span className="text-slate-700 font-medium text-sm">
+                {product.name}
+              </span>
             </div>
+          )}
+        </td>
+
+        {/* Price */}
+        <td className="px-4 py-3">
+          {isEditing ? (
+            <Input
+              value={price}
+              type="number"
+              min="0"
+              step="0.01"
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                setPrice(e.target.value)
+              }
+              className="h-8 text-sm w-32"
+              disabled={isSaving}
+            />
+          ) : (
             <span className="text-slate-700 font-medium text-sm">
-              {product.name}
+              ${Number(product.price).toFixed(2)}
+            </span>
+          )}
+        </td>
+
+        {/* Facility */}
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center shrink-0">
+              <Building2 className="w-3.5 h-3.5 text-slate-400" />
+            </div>
+            <span className="text-slate-500 text-sm">
+              {product.facility_name ?? "—"}
             </span>
           </div>
-        )}
-      </td>
+        </td>
 
-      {/* Price */}
-      <td className="px-4 py-3">
-        {isEditing ? (
-          <Input
-            value={price}
-            type="number"
-            min="0"
-            step="0.01"
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setPrice(e.target.value)
-            }
-            className="h-8 text-sm w-32"
-          />
-        ) : (
-          <span className="text-slate-700 font-medium text-sm">
-            ${Number(product.price).toFixed(2)}
-          </span>
-        )}
-      </td>
+        {/* Date Added */}
+        <td className="px-4 py-3 text-slate-400 text-sm">
+          {product.created_at
+            ? new Date(product.created_at).toLocaleDateString("en-PH", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })
+            : "—"}
+        </td>
 
-      {/* Facility */}
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-md bg-slate-100 flex items-center justify-center shrink-0">
-            <Building2 className="w-3.5 h-3.5 text-slate-400" />
+        {/* Actions */}
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-1">
+            {isEditing ? (
+              <>
+                {/* Cancel */}
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  disabled={isSaving}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Cancel"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+
+                {/* Save */}
+                <SubmitButton
+                  type="button"
+                  onClick={handleSave}
+                  isPending={isSaving}
+                  cta={<Check className="w-4 h-4" />}
+                  variant="ghost"
+                  size="icon-xs"
+                  classname="text-[#2db0b0] hover:text-[#249191] hover:bg-transparent"
+                />
+              </>
+            ) : (
+              <>
+                {/* Edit */}
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  disabled={isDeleting}
+                  className="p-1.5 text-slate-300 hover:text-[#2db0b0] transition-colors rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Edit product"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+
+                {/* Delete */}
+                <button
+                  type="button"
+                  onClick={() => setConfirmOpen(true)}
+                  disabled={isDeleting}
+                  className="p-1.5 text-slate-300 hover:text-red-500 transition-colors rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                  title="Delete product"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
           </div>
-          <span className="text-slate-500 text-sm">
-            {product.facility_name ?? "—"}
-          </span>
-        </div>
-      </td>
-
-      {/* Date Added */}
-      <td className="px-4 py-3 text-slate-400 text-sm">
-        {product.created_at
-          ? new Date(product.created_at).toLocaleDateString("en-PH", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })
-          : "—"}
-      </td>
-
-      {/* Actions */}
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-1">
-          {isEditing ? (
-            <>
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors rounded"
-                title="Cancel"
-              >
-                <X className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="p-1.5 text-[#2db0b0] hover:text-[#249191] transition-colors rounded"
-                title="Save"
-              >
-                <Check className="w-4 h-4" />
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => setIsEditing(true)}
-                className="p-1.5 text-slate-300 hover:text-[#2db0b0] transition-colors rounded"
-                title="Edit product"
-              >
-                <Pencil className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="p-1.5 text-slate-300 hover:text-red-500 transition-colors rounded"
-                title="Delete product"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </>
-          )}
-        </div>
-      </td>
-    </tr>
+        </td>
+      </tr>
+    </>
   );
 }
 

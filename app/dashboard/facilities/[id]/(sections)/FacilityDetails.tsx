@@ -6,6 +6,7 @@ import { updateFacilityInStore } from "../(redux)/facility-slice";
 import { editFacility } from "../actions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import SubmitButton from "@/app/(components)/SubmitButton";
 import {
   Select,
   SelectContent,
@@ -53,12 +54,9 @@ function FieldRow({
 }) {
   return (
     <div className="flex items-start gap-4 p-4 rounded-xl hover:bg-slate-50 transition-colors">
-      {/* ── Icon ── */}
       <div className="w-9 h-9 rounded-lg bg-[#2db0b0]/10 flex items-center justify-center shrink-0 mt-0.5">
         <span className="text-[#2db0b0]">{icon}</span>
       </div>
-
-      {/* ── Content ── */}
       <div className="flex-1 space-y-1 min-w-0">
         <p className="text-xs font-medium text-slate-400 uppercase tracking-wide">
           {label}
@@ -81,10 +79,13 @@ export default function FacilityDetails() {
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [type, setType] = useState<string>(item?.type ?? "");
   const [status, setStatus] = useState<string>(item?.status ?? "");
+  const [isSaving, setIsSaving] = useState(false);
 
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     if (!item?.id) return;
 
+    const formData = new FormData(e.currentTarget);
     formData.set("type", type);
     formData.set("status", status);
 
@@ -96,9 +97,14 @@ export default function FacilityDetails() {
       status,
     };
 
-    dispatch(updateFacilityInStore(payload));
-    setIsEditing(false);
-    await editFacility(item.id, formData);
+    setIsSaving(true);
+    try {
+      await editFacility(item.id, formData);
+      dispatch(updateFacilityInStore(payload));
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   function handleCancel() {
@@ -110,7 +116,7 @@ export default function FacilityDetails() {
   if (!item) return null;
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl  overflow-hidden shadow-2xl">
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xl">
       {/* ── Card Header ── */}
       <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
         <div className="space-y-0.5">
@@ -144,45 +150,56 @@ export default function FacilityDetails() {
               variant="outline"
               size="sm"
               onClick={handleCancel}
-              className="text-slate-500 hover:text-slate-700"
+              disabled={isSaving}
+              className="text-slate-500 hover:text-slate-700 disabled:opacity-50"
             >
               <X className="w-3.5 h-3.5 mr-1.5" />
               Cancel
             </Button>
-            <Button
+
+            <SubmitButton
               type="submit"
               form="facility-edit-form"
+              isPending={isSaving}
+              isPendingMesssage="Saving..."
+              cta={
+                <>
+                  <Check className="w-3.5 h-3.5 mr-1.5" />
+                  Save Changes
+                </>
+              }
+              variant={null}
               size="sm"
-              className="bg-[#2db0b0] hover:bg-[#249191] text-white shadow-sm"
-            >
-              <Check className="w-3.5 h-3.5 mr-1.5" />
-              Save Changes
-            </Button>
+              classname="bg-[#2db0b0] hover:bg-[#249191] text-white shadow-sm"
+            />
           </div>
         )}
       </div>
 
       {/* ── Card Body ── */}
-      <form id="facility-edit-form" action={handleSubmit} className="p-2">
+      <form id="facility-edit-form" onSubmit={handleSubmit} className="p-2">
         <div className="grid grid-cols-1 md:grid-cols-2">
-          {/* Name */}
           <FieldRow
             icon={<Building2 className="w-4 h-4" />}
             label="Facility Name"
             value={item.name}
             editing={isEditing}
           >
-            <Input name="name" defaultValue={item.name} required />
+            <Input
+              name="name"
+              defaultValue={item.name}
+              required
+              disabled={isSaving}
+            />
           </FieldRow>
 
-          {/* Type */}
           <FieldRow
             icon={<Building2 className="w-4 h-4" />}
             label="Type"
             value={item.type}
             editing={isEditing}
           >
-            <Select value={type} onValueChange={setType}>
+            <Select value={type} onValueChange={setType} disabled={isSaving}>
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
@@ -196,34 +213,46 @@ export default function FacilityDetails() {
             </Select>
           </FieldRow>
 
-          {/* Contact */}
           <FieldRow
             icon={<User className="w-4 h-4" />}
             label="Contact Person"
             value={item.contact}
             editing={isEditing}
           >
-            <Input name="contact" defaultValue={item.contact} required />
+            <Input
+              name="contact"
+              defaultValue={item.contact}
+              required
+              disabled={isSaving}
+            />
           </FieldRow>
 
-          {/* Phone */}
           <FieldRow
             icon={<Phone className="w-4 h-4" />}
             label="Phone"
             value={item.phone}
             editing={isEditing}
           >
-            <Input name="phone" type="tel" defaultValue={item.phone} required />
+            <Input
+              name="phone"
+              type="tel"
+              defaultValue={item.phone}
+              required
+              disabled={isSaving}
+            />
           </FieldRow>
 
-          {/* Status */}
           <FieldRow
             icon={<Activity className="w-4 h-4" />}
             label="Status"
             value={item.status}
             editing={isEditing}
           >
-            <Select value={status} onValueChange={setStatus}>
+            <Select
+              value={status}
+              onValueChange={setStatus}
+              disabled={isSaving}
+            >
               <SelectTrigger className="w-full">
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
@@ -237,7 +266,6 @@ export default function FacilityDetails() {
             </Select>
           </FieldRow>
 
-          {/* Created At — always read only */}
           <FieldRow
             icon={<Calendar className="w-4 h-4" />}
             label="Created At"
