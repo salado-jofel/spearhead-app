@@ -194,14 +194,14 @@ function KanbanColumn({
   const config = STATUS_CONFIG[status];
 
   return (
-    <div className="flex flex-col bg-slate-50 border border-slate-200 rounded-xl min-w-[220px] flex-1">
+    <div className="flex flex-col bg-slate-50 border border-slate-200 rounded-xl min-w-55 flex-1">
       {/* ── Column Header ── */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${config.dot}`} />
           <span className="text-sm font-semibold text-slate-700">{status}</span>
         </div>
-        <span className="min-w-[22px] h-[22px] flex items-center justify-center rounded-full bg-[#2db0b0] text-white text-xs font-bold">
+        <span className="min-w-5.5 h-5.5 flex items-center justify-center rounded-full bg-[#2db0b0] text-white text-xs font-bold">
           {orders.length}
         </span>
       </div>

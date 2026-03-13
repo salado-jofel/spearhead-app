@@ -50,9 +50,9 @@ function TrainingCard({ card }: { card: TrainingMaterial }) {
   }
 
   return (
-    <div className="group bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col w-full max-w-[280px]">
+    <div className="group bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col w-full max-w-70">
       {/* Header */}
-      <div className="bg-gradient-to-br from-[#2db0b0] to-[#1a8f8f] p-5 relative overflow-hidden">
+      <div className="bg-linear-to-br from-[#2db0b0] to-[#1a8f8f] p-5 relative overflow-hidden">
         <div className="absolute -top-4 -right-4 w-24 h-24 rounded-full bg-white/10" />
         <div className="absolute -bottom-6 -left-4 w-20 h-20 rounded-full bg-white/10" />
 
