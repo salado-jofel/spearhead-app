@@ -1,8 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { dbSelect, dbInsert, dbUpdate, dbDelete } from "@/utils/supabase/db";
-import { getSupabaseClient } from "@/utils/supabase/db";
+import {
+  dbSelect,
+  dbInsert,
+  dbUpdate,
+  dbDelete,
+  getSupabaseClient,
+} from "@/utils/supabase/db";
 import type {
   Order,
   InsertOrderPayload,
@@ -16,25 +21,7 @@ const ORDER_COLUMNS =
   "id, created_at, order_id, facility_id, product_id, amount, status, created_by, facilities(name), products(name)";
 const ORDERS_PATH = "/dashboard/orders";
 
-// ─── Helper: get current logged in user id ────────────────────────────────────
-async function getCurrentUserId(): Promise<string | null> {
-  const supabase = await getSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user?.id ?? null;
-}
-
-// ─── Helper: get current logged in user email ─────────────────────────────────
-async function getCurrentUserEmail(): Promise<string | null> {
-  const supabase = await getSupabaseClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user?.email ?? null;
-}
-
-// ─── Helper: flatten joined names ─────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 type RawOrder = {
   id: string;
   created_at: string;
@@ -63,71 +50,64 @@ function flattenOrder(row: RawOrder): Order {
   };
 }
 
-/**
- * READ: Fetches all orders with joined facility, product names
- * Note: created_by email is fetched separately via admin API
- *       or stored as denormalized field
- */
-export async function getAllOrders(): Promise<Order[]> {
-  const { data, error } = await dbSelect<RawOrder>({
-    table: ORDER_TABLE,
-    columns: ORDER_COLUMNS,
-    order: { column: "created_at", ascending: false },
-  });
-
-  if (error) {
-    console.error("[getAllOrders] Supabase error:", error.message);
-    return [];
-  }
-
-  // ── Fetch user emails for all unique created_by ids ──────────────
-  const orders = (data ?? []).map(flattenOrder);
-  const userIds = Array.from(
-    new Set(orders.map((o) => o.created_by).filter(Boolean)),
-  ) as string[];
-
-  if (userIds.length > 0) {
-    const supabase = await getSupabaseClient();
-    const emailMap: Record<string, string> = {};
-
-    // Fetch emails using auth admin (service role) or profiles table
-    // Using profiles table approach (works without service role key)
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("id, email")
-      .in("id", userIds);
-
-    if (profiles) {
-      profiles.forEach((p: { id: string; email: string }) => {
-        emailMap[p.id] = p.email;
-      });
-    }
-
-    return orders.map((o) => ({
-      ...o,
-      created_by_email: o.created_by
-        ? (emailMap[o.created_by] ?? o.created_by)
-        : undefined,
-    }));
-  }
-
-  return orders;
+// ─── Helper: get current authenticated user ───────────────────────────────────
+async function getCurrentUser() {
+  const supabase = await getSupabaseClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+  if (error || !user) throw new Error("Not authenticated");
+  return { user, supabase };
 }
 
-/**
- * CREATE: Adds a new order — auto-assigns created_by from session
- */
+// ─── READ: current user's orders only ────────────────────────────────────────
+export async function getAllOrders(): Promise<Order[]> {
+  try {
+    const { user, supabase } = await getCurrentUser();
+
+    const { data, error } = await dbSelect<RawOrder>({
+      table: ORDER_TABLE,
+      columns: ORDER_COLUMNS,
+      filters: [{ column: "created_by", value: user.id }],
+      order: { column: "created_at", ascending: false },
+    });
+
+    if (error) {
+      console.error("[getAllOrders] Supabase error:", error.message);
+      return [];
+    }
+
+    const orders = (data ?? []).map(flattenOrder);
+
+    // Fetch current user's email from profiles table
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("id, email")
+      .eq("id", user.id)
+      .single();
+
+    const email = profile?.email ?? user.email ?? undefined;
+
+    return orders.map((o) => ({ ...o, created_by_email: email }));
+  } catch (err) {
+    console.error("[getAllOrders] Unexpected error:", err);
+    return [];
+  }
+}
+
+// ─── CREATE ───────────────────────────────────────────────────────────────────
 export async function addOrder(formData: FormData) {
   try {
-    const userId = await getCurrentUserId();
+    const { user } = await getCurrentUser();
 
     const payload: InsertOrderPayload = {
       order_id: formData.get("order_id") as string,
       facility_id: formData.get("facility_id") as string,
       product_id: formData.get("product_id") as string,
       amount: parseFloat(formData.get("amount") as string) || 0,
-      status: "Draft",
-      created_by: userId ?? undefined,
+      status: "Processing",
+      created_by: user.id,
     };
 
     const { error } = await dbInsert<InsertOrderPayload>({
@@ -147,11 +127,11 @@ export async function addOrder(formData: FormData) {
   }
 }
 
-/**
- * UPDATE: Updates order status
- */
+// ─── UPDATE ───────────────────────────────────────────────────────────────────
 export async function updateOrderStatus(orderId: string, formData: FormData) {
   try {
+    const { user } = await getCurrentUser();
+
     const payload: UpdateOrderPayload = {
       status: formData.get("status") as Order["status"],
     };
@@ -161,6 +141,7 @@ export async function updateOrderStatus(orderId: string, formData: FormData) {
       payload,
       column: "id",
       value: orderId,
+      guards: [{ column: "created_by", value: user.id }],
     });
 
     if (error) {
@@ -175,15 +156,16 @@ export async function updateOrderStatus(orderId: string, formData: FormData) {
   }
 }
 
-/**
- * DELETE: Deletes an order
- */
+// ─── DELETE ───────────────────────────────────────────────────────────────────
 export async function deleteOrder(orderId: string) {
   try {
+    const { user } = await getCurrentUser();
+
     const { error } = await dbDelete({
       table: ORDER_TABLE,
       column: "id",
       value: orderId,
+      guards: [{ column: "created_by", value: user.id }],
     });
 
     if (error) {
@@ -198,33 +180,31 @@ export async function deleteOrder(orderId: string) {
   }
 }
 
-
-/**
- * READ: Fetches active facilities for order form dropdown
- */
+// ─── Dropdown helpers ─────────────────────────────────────────────────────────
 export async function getActiveFacilities(): Promise<Facility[]> {
-  const { data, error } = await dbSelect<Facility>({
-    table: "facilities",
-    columns: "id, name, status",       // ← add status
-    order: { column: "name", ascending: true },
-  });
+  try {
+    const { data, error } = await dbSelect<Facility>({
+      table: "facilities",
+      columns: "id, name, status",
+      order: { column: "name", ascending: true },
+    });
 
-  if (error) {
-    console.error("[getActiveFacilities] Supabase error:", error.message);
+    if (error) {
+      console.error("[getActiveFacilities] Supabase error:", error.message);
+      return [];
+    }
+
+    return (data ?? []).filter((f) => f.status === "Active");
+  } catch (err) {
+    console.error("[getActiveFacilities] Unexpected error:", err);
     return [];
   }
-
-  return (data ?? []).filter((f) => f.status === "Active");
 }
 
-
-/**
- * READ: Fetches all products for order form dropdown
- */
 export async function getAllProducts(): Promise<Product[]> {
   const { data, error } = await dbSelect<Product>({
     table: "products",
-    columns: "id, name, price, facility_id",
+    columns: "id, name, price", 
     order: { column: "name", ascending: true },
   });
 
@@ -235,3 +215,4 @@ export async function getAllProducts(): Promise<Product[]> {
 
   return data ?? [];
 }
+

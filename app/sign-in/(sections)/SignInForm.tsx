@@ -164,7 +164,7 @@ export default function SignInForm() {
               cta={
                 <Link
                   href="/sign-up"
-                  className="flex gap-2 items-center justify-center"
+                  className="flex gap-2 items-center justify-center w-full h-full"
                 >
                   <UserPlus className="w-5 h-5" /> Create New Account
                 </Link>

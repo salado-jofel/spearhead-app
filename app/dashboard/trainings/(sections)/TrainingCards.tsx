@@ -2,52 +2,33 @@
 
 import { useState } from "react";
 import { useAppSelector } from "@/store/hooks";
-import type { MarketingMaterial } from "@/app/(interfaces)/marketing";
 import { Button } from "@/components/ui/button";
 import { getSignedDownloadUrl } from "../actions";
 import {
-  FileText,
-  Presentation,
   BookOpen,
-  FlaskConical,
-  FileBarChart2,
-  ScrollText,
+  GraduationCap,
+  Presentation,
+  ClipboardList,
+  FileText,
   ArrowDownToLine,
   Loader2,
 } from "lucide-react";
+import { TrainingMaterial } from "@/app/(interfaces)/trainings";
 
-// ─── Pick icon based on tag keyword ──────────────────────────────────────────
 function getCardIcon(tag: string) {
   const t = tag?.toLowerCase() ?? "";
-  if (t.includes("presentation") || t.includes("powerpoint"))
+  if (t.includes("sales"))
     return <Presentation className="w-6 h-6 text-white" />;
-  if (t.includes("clinical") || t.includes("study") || t.includes("reference"))
-    return <FlaskConical className="w-6 h-6 text-white" />;
-  if (t.includes("brochure") || t.includes("comparison"))
+  if (t.includes("guide") || t.includes("handbook"))
     return <BookOpen className="w-6 h-6 text-white" />;
-  if (t.includes("report") || t.includes("data"))
-    return <FileBarChart2 className="w-6 h-6 text-white" />;
-  if (t.includes("contract") || t.includes("agreement"))
-    return <ScrollText className="w-6 h-6 text-white" />;
+  if (t.includes("certification") || t.includes("course"))
+    return <GraduationCap className="w-6 h-6 text-white" />;
+  if (t.includes("checklist") || t.includes("protocol"))
+    return <ClipboardList className="w-6 h-6 text-white" />;
   return <FileText className="w-6 h-6 text-white" />;
 }
 
-// ─── Group label from tag ─────────────────────────────────────────────────────
-function getGroup(tag?: string): string {
-  const t = (tag ?? "").toLowerCase();
-  if (t.includes("reimbursement")) return "Reimbursement Guides";
-  if (t.includes("product document")) return "Product Documents";
-  return "Marketing Materials";
-}
-
-const GROUP_ORDER = [
-  "Marketing Materials",
-  "Reimbursement Guides",
-  "Product Documents",
-];
-
-// ─── Card ─────────────────────────────────────────────────────────────────────
-function MarketingCard({ card }: { card: MarketingMaterial }) {
+function TrainingCard({ card }: { card: TrainingMaterial }) {
   const [isDownloading, setIsDownloading] = useState(false);
 
   async function handleDownload() {
@@ -70,7 +51,7 @@ function MarketingCard({ card }: { card: MarketingMaterial }) {
 
   return (
     <div className="group bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col w-full max-w-70">
-      {/* ── Header ── */}
+      {/* Header */}
       <div className="bg-linear-to-br from-[#2db0b0] to-[#1a8f8f] p-5 relative overflow-hidden">
         <div className="absolute -top-4 -right-4 w-24 h-24 rounded-full bg-white/10" />
         <div className="absolute -bottom-6 -left-4 w-20 h-20 rounded-full bg-white/10" />
@@ -80,7 +61,7 @@ function MarketingCard({ card }: { card: MarketingMaterial }) {
             {getCardIcon(card.tag)}
           </div>
           <span className="text-xs font-semibold bg-white/20 text-white px-2.5 py-1 rounded-full backdrop-blur-sm">
-            {card.tag?.split("+")[0]?.trim() ?? "PDF"}
+            {card.tag?.split("•")[0]?.trim() ?? "PDF"}
           </span>
         </div>
 
@@ -88,15 +69,15 @@ function MarketingCard({ card }: { card: MarketingMaterial }) {
           <h3 className="text-sm font-bold text-white leading-snug line-clamp-2">
             {card.title}
           </h3>
-          {card.tag?.includes("+") && (
+          {card.tag?.includes("•") && (
             <p className="text-xs text-white/70 mt-1">
-              {card.tag.split("+")[1]?.trim()}
+              {card.tag.split("•")[1]?.trim()}
             </p>
           )}
         </div>
       </div>
 
-      {/* ── Body ── */}
+      {/* Body */}
       <div className="p-4 flex flex-col flex-1 justify-between gap-4">
         <p className="text-sm text-slate-500 leading-relaxed line-clamp-3">
           {card.description}
@@ -125,48 +106,17 @@ function MarketingCard({ card }: { card: MarketingMaterial }) {
   );
 }
 
-// ─── Section heading + divider ────────────────────────────────────────────────
-function SectionGroup({
-  title,
-  items,
-}: {
-  title: string;
-  items: MarketingMaterial[];
-}) {
-  if (items.length === 0) return null;
-
-  return (
-    <div className="space-y-5">
-      {/* Title + divider */}
-      <div className="flex items-center gap-3">
-        <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400 whitespace-nowrap">
-          {title}
-        </h2>
-        <div className="flex-1 h-px bg-slate-200" />
-      </div>
-
-      {/* Cards */}
-      <div className="flex flex-wrap gap-5">
-        {items.map((card) => (
-          <MarketingCard key={card.id} card={card} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Main Component ───────────────────────────────────────────────────────────
-export default function MarketingCards() {
-  const items = useAppSelector((state) => state.marketing.items);
+export default function TrainingCards() {
+  const items = useAppSelector((state) => state.trainings.items);
 
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24">
         <div className="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
-          <FileText className="w-8 h-8 text-slate-300" />
+          <BookOpen className="w-8 h-8 text-slate-300" />
         </div>
         <p className="text-base font-semibold text-slate-400">
-          No materials available
+          No training materials available
         </p>
         <p className="text-sm text-slate-300 mt-1">
           Materials will appear here once added
@@ -175,19 +125,10 @@ export default function MarketingCards() {
     );
   }
 
-  // Group items by tag category, preserving sort_order within each group
-  const grouped = GROUP_ORDER.reduce<Record<string, MarketingMaterial[]>>(
-    (acc, group) => {
-      acc[group] = items.filter((item) => getGroup(item.tag) === group);
-      return acc;
-    },
-    {},
-  );
-
   return (
-    <div className="space-y-10">
-      {GROUP_ORDER.map((group) => (
-        <SectionGroup key={group} title={group} items={grouped[group]} />
+    <div className="flex flex-wrap gap-5">
+      {items.map((card) => (
+        <TrainingCard key={card.id} card={card} />
       ))}
     </div>
   );

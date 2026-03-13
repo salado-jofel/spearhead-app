@@ -37,13 +37,15 @@ export async function getProfile(): Promise<Profile | null> {
       user.user_metadata?.full_name?.split(" ").slice(1).join(" ") ??
       "";
 
-    return {
-      id: user.id,
-      first_name: firstName,
-      last_name: lastName,
-      email: user.email ?? "",
-      phone: user.user_metadata?.phone ?? "",
-    };
+  return {
+    id: user.id,
+    first_name: firstName,
+    last_name: lastName,
+    email: user.email ?? "",
+    phone: user.user_metadata?.phone ?? "",
+    role: user.user_metadata?.role ?? "sales_representative",
+  };
+
   } catch (err) {
     console.error("[getProfile] Unexpected error:", err);
     return null;

@@ -7,7 +7,6 @@ import {
 } from "../(redux)/orders-slice";
 import { updateOrderStatus, deleteOrder } from "../actions";
 import type { Order, OrderStatus } from "@/app/(interfaces)/order";
-import { ORDER_STATUSES } from "@/app/(interfaces)/order";
 import {
   Trash2,
   Package,
@@ -20,29 +19,18 @@ import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import ConfirmModal from "@/app/(components)/ConfirmModal";
 
+// ─── Only 3 statuses shown on the board ──────────────────────────────────────
+const BOARD_STATUSES = ["Processing", "Shipped", "Delivered"] as const;
+type BoardStatus = (typeof BOARD_STATUSES)[number];
+
 // ─── Status color config ──────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<
-  OrderStatus,
-  { badge: string; dot: string; next?: OrderStatus }
+  BoardStatus,
+  { badge: string; dot: string; next?: BoardStatus }
 > = {
-  Draft: {
-    badge: "bg-slate-100 text-slate-600",
-    dot: "bg-slate-400",
-    next: "Submitted",
-  },
-  Submitted: {
-    badge: "bg-blue-50 text-blue-600",
-    dot: "bg-blue-400",
-    next: "Processing",
-  },
   Processing: {
     badge: "bg-yellow-50 text-yellow-600",
     dot: "bg-yellow-400",
-    next: "Approved",
-  },
-  Approved: {
-    badge: "bg-teal-50 text-teal-600",
-    dot: "bg-[#2db0b0]",
     next: "Shipped",
   },
   Shipped: {
@@ -60,24 +48,19 @@ const STATUS_CONFIG: Record<
 // ─── Order Card ───────────────────────────────────────────────────────────────
 function OrderCard({ order }: { order: Order }) {
   const dispatch = useAppDispatch();
-  const config = STATUS_CONFIG[order.status];
+  const config = STATUS_CONFIG[order.status as BoardStatus];
   const [isAdvancing, setIsAdvancing] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
 
   async function handleAdvance() {
-    if (!order.id || !config.next || isAdvancing) return;
+    if (!order.id || !config?.next || isAdvancing) return;
     setIsAdvancing(true);
-
     try {
-      // ── 1. Server first ─────────────────────────────────────────
       const formData = new FormData();
       formData.set("status", config.next);
       await updateOrderStatus(order.id, formData);
-
-      // ── 2. Only update Redux after server confirms success ───────
-      const updated: Order = { ...order, status: config.next };
-      dispatch(updateOrderInStore(updated));
+      dispatch(updateOrderInStore({ ...order, status: config.next }));
     } catch (err) {
       console.error("[handleAdvance] Error:", err);
     } finally {
@@ -88,12 +71,8 @@ function OrderCard({ order }: { order: Order }) {
   async function handleDelete() {
     if (!order.id) return;
     setIsDeleting(true);
-
     try {
-      // ── 1. Server first ─────────────────────────────────────────
       await deleteOrder(order.id);
-
-      // ── 2. Only remove from Redux after server confirms success ──
       dispatch(removeOrderFromStore(order.id));
     } catch (err) {
       console.error("[handleDelete] Error:", err);
@@ -105,7 +84,6 @@ function OrderCard({ order }: { order: Order }) {
 
   return (
     <>
-      {/* ── Confirm Delete Modal ─────────────────────────────────── */}
       <ConfirmModal
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
@@ -128,7 +106,7 @@ function OrderCard({ order }: { order: Order }) {
             size="icon"
             onClick={() => setConfirmOpen(true)}
             disabled={isDeleting}
-            className="h-6 w-6 text-slate-300 hover:text-red-500 hover:bg-red-50"
+            className="h-6 w-6 text-slate-300 hover:text-red-500 hover:bg-red-50 cursor-pointer"
             title="Delete order"
           >
             <Trash2 className="w-3.5 h-3.5" />
@@ -176,15 +154,14 @@ function OrderCard({ order }: { order: Order }) {
             ${Number(order.amount).toFixed(2)}
           </span>
 
-          {/* ── Advance Status Button ── */}
-          {config.next && (
+          {config?.next && (
             <Button
               type="button"
               variant="ghost"
               size="sm"
               onClick={handleAdvance}
               disabled={isAdvancing}
-              className="h-7 px-2 text-xs text-[#2db0b0] hover:text-[#249191] hover:bg-teal-50 font-medium"
+              className="h-7 px-2 text-xs text-[#2db0b0] hover:text-[#249191] hover:bg-teal-50 font-medium cursor-pointer"
               title={`Move to ${config.next}`}
             >
               {isAdvancing ? (
@@ -211,20 +188,20 @@ function KanbanColumn({
   status,
   orders,
 }: {
-  status: OrderStatus;
+  status: BoardStatus;
   orders: Order[];
 }) {
   const config = STATUS_CONFIG[status];
 
   return (
-    <div className="flex flex-col bg-slate-50 border border-slate-200 rounded-xl min-w-[220px] flex-1">
+    <div className="flex flex-col bg-slate-50 border border-slate-200 rounded-xl min-w-55 flex-1">
       {/* ── Column Header ── */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${config.dot}`} />
           <span className="text-sm font-semibold text-slate-700">{status}</span>
         </div>
-        <span className="min-w-[22px] h-[22px] flex items-center justify-center rounded-full bg-[#2db0b0] text-white text-xs font-bold">
+        <span className="min-w-5.5 h-5.5 flex items-center justify-center rounded-full bg-[#2db0b0] text-white text-xs font-bold">
           {orders.length}
         </span>
       </div>
@@ -247,19 +224,20 @@ function KanbanColumn({
 export default function KanbanBoard() {
   const items = useAppSelector((state) => state.orders.items);
 
+  // Only show orders that belong to the 3 board statuses
   const grouped = useMemo(() => {
-    return ORDER_STATUSES.reduce<Record<OrderStatus, Order[]>>(
+    return BOARD_STATUSES.reduce<Record<BoardStatus, Order[]>>(
       (acc, status) => {
         acc[status] = items.filter((o) => o.status === status);
         return acc;
       },
-      {} as Record<OrderStatus, Order[]>,
+      {} as Record<BoardStatus, Order[]>,
     );
   }, [items]);
 
   return (
     <div className="flex gap-4 overflow-x-auto pb-4">
-      {ORDER_STATUSES.map((status) => (
+      {BOARD_STATUSES.map((status) => (
         <KanbanColumn key={status} status={status} orders={grouped[status]} />
       ))}
     </div>

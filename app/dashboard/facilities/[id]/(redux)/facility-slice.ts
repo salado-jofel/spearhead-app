@@ -24,22 +24,9 @@ const facilitySlice = createSlice({
       state.products = [];
     },
 
-    // ── Products ────────────────────────────────────────────────────────
-    setProducts(state, action: PayloadAction<Product[]>) {
-      state.products = action.payload;
-    },
-    addProductToStore(state, action: PayloadAction<Product>) {
-      state.products.unshift(action.payload);
-    },
-    updateProductInStore(state, action: PayloadAction<Product>) {
-      const index = state.products.findIndex((p) => p.id === action.payload.id);
-      if (index !== -1) {
-        state.products[index] = action.payload;
-      }
-    },
-    removeProductFromStore(state, action: PayloadAction<string>) {
-      state.products = state.products.filter((p) => p.id !== action.payload);
-    },
+   
+
+  
   },
 });
 
@@ -47,10 +34,6 @@ export const {
   setFacility,
   updateFacilityInStore,
   clearFacility,
-  setProducts,
-  addProductToStore,
-  updateProductInStore,
-  removeProductFromStore,
 } = facilitySlice.actions;
 
 export default facilitySlice.reducer;
