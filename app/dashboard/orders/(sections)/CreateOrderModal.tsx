@@ -29,16 +29,15 @@ export function CreateOrderModal() {
   const [orderId, setOrderId] = useState<string>("");
   const [isPending, setIsPending] = useState<boolean>(false);
 
-  // ── Generate next order ID ───────────────────────────────────────
+  // ── Generate order ID on open ────────────────────────────────────
   useEffect(() => {
     const pad = (n: number) => String(n).padStart(3, "0");
     setOrderId(`ORD-${pad(Math.floor(Math.random() * 999) + 1)}`);
   }, [open]);
 
-  // ── Fetch facilities and products via server actions ─────────────
+  // ── Fetch facilities and products ────────────────────────────────
   useEffect(() => {
     if (!open) return;
-
     async function fetchData() {
       const [fetchedFacilities, fetchedProducts] = await Promise.all([
         getActiveFacilities(),
@@ -47,15 +46,10 @@ export function CreateOrderModal() {
       setFacilities(fetchedFacilities);
       setProducts(fetchedProducts);
     }
-
     fetchData();
   }, [open]);
 
-  // ── Filter products by selected facility ─────────────────────────
-  const filteredProducts = facilityId
-    ? products.filter((p) => p.facility_id === facilityId)
-    : products;
-
+  // ── Products: show ALL — no facility_id filter (column was dropped) ──
   const selectedProduct = products.find((p) => p.id === productId);
 
   function resetForm() {
@@ -63,7 +57,6 @@ export function CreateOrderModal() {
     setProductId("");
   }
 
-  // ── Use onSubmit instead of action to properly await ────────────
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsPending(true);
@@ -80,7 +73,7 @@ export function CreateOrderModal() {
       facility_id: facilityId,
       product_id: productId,
       amount: parseFloat(formData.get("amount") as string) || 0,
-      status: "Draft",
+      status: "Processing",
       facility_name: facilities.find((f) => f.id === facilityId)?.name ?? "—",
       product_name: selectedProduct?.name ?? "—",
     };
@@ -110,6 +103,7 @@ export function CreateOrderModal() {
           New Order
         </Button>
       </DialogTrigger>
+
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold text-slate-800">
@@ -117,9 +111,8 @@ export function CreateOrderModal() {
           </DialogTitle>
         </DialogHeader>
 
-        {/* ── onSubmit instead of action ────────────────────────── */}
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          {/* ── Order ID ──────────────────────────────────────── */}
+          {/* Order ID */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Hash className="w-4 h-4 text-[#2db0b0]" />
@@ -128,15 +121,13 @@ export function CreateOrderModal() {
             <Input
               name="order_id"
               value={orderId}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setOrderId(e.target.value)
-              }
+              onChange={(e) => setOrderId(e.target.value)}
               placeholder="ORD-001"
               required
             />
           </div>
 
-          {/* ── Facility ──────────────────────────────────────── */}
+          {/* Facility */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Building2 className="w-4 h-4 text-[#2db0b0]" />
@@ -144,15 +135,16 @@ export function CreateOrderModal() {
             </label>
             <select
               value={facilityId}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                setFacilityId(e.target.value);
-                setProductId("");
-              }}
+              onChange={(e) => setFacilityId(e.target.value)}
               required
-              disabled={isPending}
+              disabled={isPending || facilities.length === 0}
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white disabled:opacity-50"
             >
-              <option value="">Select facility</option>
+              <option value="">
+                {facilities.length === 0
+                  ? "Loading facilities..."
+                  : "Select facility"}
+              </option>
               {facilities.map((f) => (
                 <option key={f.id} value={f.id}>
                   {f.name}
@@ -161,7 +153,7 @@ export function CreateOrderModal() {
             </select>
           </div>
 
-          {/* ── Product ───────────────────────────────────────── */}
+          {/* Product — all products, no facility filter */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Package className="w-4 h-4 text-[#2db0b0]" />
@@ -169,15 +161,17 @@ export function CreateOrderModal() {
             </label>
             <select
               value={productId}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                setProductId(e.target.value)
-              }
+              onChange={(e) => setProductId(e.target.value)}
               required
-              disabled={isPending}
+              disabled={isPending || products.length === 0}
               className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white disabled:opacity-50"
             >
-              <option value="">Select product</option>
-              {filteredProducts.map((p) => (
+              <option value="">
+                {products.length === 0
+                  ? "Loading products..."
+                  : "Select product"}
+              </option>
+              {products.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
                 </option>
@@ -185,7 +179,7 @@ export function CreateOrderModal() {
             </select>
           </div>
 
-          {/* ── Amount ────────────────────────────────────────── */}
+          {/* Amount */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <DollarSign className="w-4 h-4 text-[#2db0b0]" />
@@ -203,7 +197,7 @@ export function CreateOrderModal() {
             />
           </div>
 
-          {/* ── Actions ───────────────────────────────────────── */}
+          {/* Actions */}
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button
               type="button"

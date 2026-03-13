@@ -25,6 +25,7 @@ export async function signup(
         last_name: lastName,
         full_name: `${firstName} ${lastName}`.trim(),
         role,
+        phone,
       },
     },
   });
@@ -38,21 +39,6 @@ export async function signup(
     return { error: "An account with this email already exists." };
   }
 
-  // Upsert profile with role
-  if (data.user) {
-    const { error: profileError } = await supabase.from("profiles").upsert({
-      id: data.user.id,
-      email,
-      first_name: firstName,
-      last_name: lastName,
-      phone,
-      role,
-    });
-
-    if (profileError) {
-      console.error("[signup] Profile upsert error:", profileError.message);
-    }
-  }
 
   redirect("/verify-email");
 }
