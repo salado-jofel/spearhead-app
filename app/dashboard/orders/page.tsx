@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getAllOrders } from "./actions";
 import Providers from "./(sections)/Providers";
 import Header from "./(sections)/Header";
