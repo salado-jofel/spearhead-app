@@ -26,7 +26,7 @@ export default function VerifyEmailForm() {
             cta={
               <Link
                 href="/sign-in"
-                className="flex gap-2 items-center justify-center"
+                className="flex gap-2 items-center justify-center w-full h-full"
               >
                 Back to login
               </Link>
