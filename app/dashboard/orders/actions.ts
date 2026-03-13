@@ -202,21 +202,17 @@ export async function getActiveFacilities(): Promise<Facility[]> {
 }
 
 export async function getAllProducts(): Promise<Product[]> {
-  try {
-    const { data, error } = await dbSelect<Product>({
-      table: "products",
-      columns: "id, name, price, facility_id",
-      order: { column: "name", ascending: true },
-    });
+  const { data, error } = await dbSelect<Product>({
+    table: "products",
+    columns: "id, name, price", 
+    order: { column: "name", ascending: true },
+  });
 
-    if (error) {
-      console.error("[getAllProducts] Supabase error:", error.message);
-      return [];
-    }
-
-    return data ?? [];
-  } catch (err) {
-    console.error("[getAllProducts] Unexpected error:", err);
+  if (error) {
+    console.error("[getAllProducts] Supabase error:", error.message);
     return [];
   }
+
+  return data ?? [];
 }
+

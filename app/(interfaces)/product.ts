@@ -3,12 +3,14 @@ export interface Product {
   created_at?: string;
   name: string;
   price: number;
-  facility_id: string;
-  facility_name?: string; // joined from facilities table
 }
 
-export type InsertProductPayload = Omit<
-  Product,
-  "id" | "created_at" | "facility_name"
->;
-export type UpdateProductPayload = Partial<InsertProductPayload>;
+export type InsertProductPayload = {
+  name: string;
+  price: number;
+};
+
+export type UpdateProductPayload = {
+  name?: string;
+  price?: number;
+};

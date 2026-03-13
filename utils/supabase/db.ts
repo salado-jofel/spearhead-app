@@ -5,20 +5,28 @@ export async function getSupabaseClient(): Promise<SupabaseClient> {
   return await createClient();
 }
 
-export async function dbInsert<T extends Record<string, unknown>>({
+export async function dbInsert<T extends Record<string, unknown>, R = T>({
   table,
   payload,
+  select,
 }: {
   table: string;
   payload: T | T[];
+  select?: string; // ← NEW: optional select to return inserted row
 }) {
   const supabase = await getSupabaseClient();
 
-  const { error } = await supabase
+  let query = supabase
     .from(table)
     .insert(Array.isArray(payload) ? payload : [payload]);
 
-  return { error };
+  if (select) {
+    const { data, error } = await query.select(select).single();
+    return { data: data as R | null, error };
+  }
+
+  const { error } = await query;
+  return { data: null, error };
 }
 
 export async function dbSelect<T>({
@@ -31,19 +39,17 @@ export async function dbSelect<T>({
   table: string;
   columns?: string;
   order?: { column: string; ascending?: boolean };
-  filter?: { column: string; value: string }; // single (backward compat)
-  filters?: { column: string; value: string }[]; // ← NEW: multiple filters
+  filter?: { column: string; value: string };
+  filters?: { column: string; value: string }[];
 }): Promise<{ data: T[] | null; error: { message: string } | null }> {
   const supabase = await getSupabaseClient();
 
   let query = supabase.from(table).select(columns);
 
-  // single filter — kept for backward compatibility
   if (filter) {
     query = query.eq(filter.column, filter.value);
   }
 
-  // multiple filters — applied as AND conditions
   if (filters && filters.length > 0) {
     for (const f of filters) {
       query = query.eq(f.column, f.value);
@@ -64,7 +70,7 @@ export async function dbUpdate<T extends Record<string, unknown>>({
   payload,
   column,
   value,
-  guards, // ← NEW: extra .eq() ownership guards
+  guards,
 }: {
   table: string;
   payload: Partial<T>;
@@ -91,7 +97,7 @@ export async function dbDelete({
   table,
   column,
   value,
-  guards, // ← NEW: extra .eq() ownership guards
+  guards,
 }: {
   table: string;
   column: string;
