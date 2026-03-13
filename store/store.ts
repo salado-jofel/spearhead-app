@@ -5,6 +5,7 @@ import marketingSlice from "@/app/dashboard/marketing/(redux)/marketing-slice";
 import ordersSlice from "@/app/dashboard/orders/(redux)/orders-slice";
 import productsSlice from "@/app/dashboard/products/(redux)/products-slice";
 import profileSlice from "@/app/dashboard/profile/(redux)/profile-slice";
+import trainingsSlice from "@/app/dashboard/trainings/(redux)/trainings-slice";
 import { configureStore } from "@reduxjs/toolkit";
 
 export const store = configureStore({
@@ -16,6 +17,7 @@ export const store = configureStore({
     profile: profileSlice,
     marketing: marketingSlice,
     contracts: contractsSlice,
+    trainings: trainingsSlice
   },
 });
 

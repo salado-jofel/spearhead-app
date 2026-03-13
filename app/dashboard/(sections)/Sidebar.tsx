@@ -10,6 +10,7 @@ import {
   Megaphone,
   FileText,
   User,
+  BookOpen,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -24,6 +25,7 @@ const navItems = [
   { icon: UserCircle, label: "Profile", href: "/dashboard/profile" },
   { icon: Megaphone, label: "Marketing", href: "/dashboard/marketing" },
   { icon: FileText, label: "Contracts", href: "/dashboard/contracts" },
+  { icon: BookOpen, label: "Trainings", href: "/dashboard/trainings" },
 ];
 
 export function Sidebar() {
