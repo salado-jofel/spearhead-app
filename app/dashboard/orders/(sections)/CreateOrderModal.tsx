@@ -21,21 +21,19 @@ import SubmitButton from "@/app/(components)/SubmitButton";
 
 export function CreateOrderModal() {
   const dispatch = useAppDispatch();
-  const [open, setOpen] = useState<boolean>(false);
+  const [open, setOpen] = useState(false);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [facilityId, setFacilityId] = useState<string>("");
-  const [productId, setProductId] = useState<string>("");
-  const [orderId, setOrderId] = useState<string>("");
-  const [isPending, setIsPending] = useState<boolean>(false);
+  const [facilityId, setFacilityId] = useState("");
+  const [productId, setProductId] = useState("");
+  const [orderId, setOrderId] = useState("");
+  const [isPending, setIsPending] = useState(false);
 
-  // ── Generate order ID on open ────────────────────────────────────
   useEffect(() => {
     const pad = (n: number) => String(n).padStart(3, "0");
     setOrderId(`ORD-${pad(Math.floor(Math.random() * 999) + 1)}`);
   }, [open]);
 
-  // ── Fetch facilities and products ────────────────────────────────
   useEffect(() => {
     if (!open) return;
     async function fetchData() {
@@ -49,7 +47,6 @@ export function CreateOrderModal() {
     fetchData();
   }, [open]);
 
-  // ── Products: show ALL — no facility_id filter (column was dropped) ──
   const selectedProduct = products.find((p) => p.id === productId);
 
   function resetForm() {
@@ -60,7 +57,6 @@ export function CreateOrderModal() {
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsPending(true);
-
     const formData = new FormData(e.currentTarget);
     formData.set("order_id", orderId);
     formData.set("facility_id", facilityId);
@@ -84,7 +80,7 @@ export function CreateOrderModal() {
       resetForm();
       setOpen(false);
     } catch (err) {
-      console.error("[CreateOrderModal] Error:", err);
+      console.error("[CreateOrderModal]", err);
     } finally {
       setIsPending(false);
     }
@@ -98,13 +94,14 @@ export function CreateOrderModal() {
       }}
     >
       <DialogTrigger asChild>
-        <Button className="bg-[#2db0b0] hover:bg-[#249191] text-white cursor-pointer">
+        <Button className="bg-[#2db0b0] hover:bg-[#249191] text-white cursor-pointer w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           New Order
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md">
+      {/* max-h + overflow so form scrolls on very small screens */}
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md rounded-xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold text-slate-800">
             Create New Order
@@ -153,7 +150,7 @@ export function CreateOrderModal() {
             </select>
           </div>
 
-          {/* Product — all products, no facility filter */}
+          {/* Product */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Package className="w-4 h-4 text-[#2db0b0]" />
@@ -198,12 +195,12 @@ export function CreateOrderModal() {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => setOpen(false)}
-              className="text-slate-600"
+              className="text-slate-600 w-full sm:w-auto"
               disabled={isPending}
             >
               Cancel
@@ -220,7 +217,7 @@ export function CreateOrderModal() {
               isPendingMesssage="Creating..."
               variant="default"
               size="default"
-              classname="bg-[#2db0b0] hover:bg-[#249191] text-white"
+              classname="bg-[#2db0b0] hover:bg-[#249191] text-white w-full sm:w-auto"
             />
           </div>
         </form>

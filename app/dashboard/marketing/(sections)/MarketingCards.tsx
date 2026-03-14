@@ -16,7 +16,6 @@ import {
   Loader2,
 } from "lucide-react";
 
-// ─── Pick icon based on tag keyword ──────────────────────────────────────────
 function getCardIcon(tag: string) {
   const t = tag?.toLowerCase() ?? "";
   if (t.includes("presentation") || t.includes("powerpoint"))
@@ -32,7 +31,6 @@ function getCardIcon(tag: string) {
   return <FileText className="w-6 h-6 text-white" />;
 }
 
-// ─── Group label from tag ─────────────────────────────────────────────────────
 function getGroup(tag?: string): string {
   const t = (tag ?? "").toLowerCase();
   if (t.includes("reimbursement")) return "Reimbursement Guides";
@@ -69,7 +67,8 @@ function MarketingCard({ card }: { card: MarketingMaterial }) {
   }
 
   return (
-    <div className="group bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col w-full max-w-70">
+    // ↓ removed max-w-70, now fills grid cell
+    <div className="group bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col w-full">
       {/* ── Header ── */}
       <div className="bg-linear-to-br from-[#2db0b0] to-[#1a8f8f] p-5 relative overflow-hidden">
         <div className="absolute -top-4 -right-4 w-24 h-24 rounded-full bg-white/10" />
@@ -125,7 +124,7 @@ function MarketingCard({ card }: { card: MarketingMaterial }) {
   );
 }
 
-// ─── Section heading + divider ────────────────────────────────────────────────
+// ─── Section Group ─────────────────────────────────────────────────────────────
 function SectionGroup({
   title,
   items,
@@ -137,7 +136,6 @@ function SectionGroup({
 
   return (
     <div className="space-y-5">
-      {/* Title + divider */}
       <div className="flex items-center gap-3">
         <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400 whitespace-nowrap">
           {title}
@@ -145,8 +143,8 @@ function SectionGroup({
         <div className="flex-1 h-px bg-slate-200" />
       </div>
 
-      {/* Cards */}
-      <div className="flex flex-wrap gap-5">
+      {/* ↓ responsive grid replacing flex-wrap */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
         {items.map((card) => (
           <MarketingCard key={card.id} card={card} />
         ))}
@@ -175,7 +173,6 @@ export default function MarketingCards() {
     );
   }
 
-  // Group items by tag category, preserving sort_order within each group
   const grouped = GROUP_ORDER.reduce<Record<string, MarketingMaterial[]>>(
     (acc, group) => {
       acc[group] = items.filter((item) => getGroup(item.tag) === group);

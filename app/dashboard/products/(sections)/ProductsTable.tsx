@@ -28,6 +28,8 @@ import {
   Check,
   Plus,
   DollarSign,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 
 // ─── Add Product Modal ────────────────────────────────────────────────────────
@@ -65,7 +67,7 @@ function AddProductModal() {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold text-slate-800">
             Add New Product
@@ -73,7 +75,6 @@ function AddProductModal() {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          {/* Product Name */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Package className="w-4 h-4 text-[#2db0b0]" />
@@ -87,7 +88,6 @@ function AddProductModal() {
             />
           </div>
 
-          {/* Price */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <DollarSign className="w-4 h-4 text-[#2db0b0]" />
@@ -104,14 +104,13 @@ function AddProductModal() {
             />
           </div>
 
-          {/* Actions */}
-          <div className="flex items-center justify-end gap-2 pt-2">
+          <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 pt-2">
             <Button
               type="button"
               variant="outline"
               onClick={() => setOpen(false)}
               disabled={isSubmitting}
-              className="text-slate-600 cursor-pointer"
+              className="w-full sm:w-auto text-slate-600 cursor-pointer"
             >
               Cancel
             </Button>
@@ -127,7 +126,7 @@ function AddProductModal() {
               isPendingMesssage="Saving..."
               variant="default"
               size="default"
-              classname="bg-[#2db0b0] hover:bg-[#249191] text-white cursor-pointer"
+              classname="w-full sm:w-auto bg-[#2db0b0] hover:bg-[#249191] text-white cursor-pointer"
             />
           </div>
         </form>
@@ -136,7 +135,7 @@ function AddProductModal() {
   );
 }
 
-// ─── Product Row ──────────────────────────────────────────────────────────────
+// ─── Product Row (desktop table) ──────────────────────────────────────────────
 function ProductRow({ product }: { product: Product }) {
   const dispatch = useAppDispatch();
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -198,14 +197,11 @@ function ProductRow({ product }: { product: Product }) {
       />
 
       <tr className="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0">
-        {/* Name */}
         <td className="px-4 py-3">
           {isEditing ? (
             <Input
               value={name}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setName(e.target.value)
-              }
+              onChange={(e) => setName(e.target.value)}
               className="h-8 text-sm"
               disabled={isSaving}
             />
@@ -221,7 +217,6 @@ function ProductRow({ product }: { product: Product }) {
           )}
         </td>
 
-        {/* Price */}
         <td className="px-4 py-3">
           {isEditing ? (
             <Input
@@ -229,9 +224,7 @@ function ProductRow({ product }: { product: Product }) {
               type="number"
               min="0"
               step="0.01"
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setPrice(e.target.value)
-              }
+              onChange={(e) => setPrice(e.target.value)}
               className="h-8 text-sm w-32"
               disabled={isSaving}
             />
@@ -242,7 +235,6 @@ function ProductRow({ product }: { product: Product }) {
           )}
         </td>
 
-        {/* Date Added */}
         <td className="px-4 py-3 text-slate-400 text-sm">
           {product.created_at
             ? new Date(product.created_at).toLocaleDateString("en-PH", {
@@ -253,7 +245,30 @@ function ProductRow({ product }: { product: Product }) {
             : "—"}
         </td>
 
-        {/* Actions */}
+        <td className="px-4 py-3">
+          {product.qb_item_id ? (
+            <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              QB Synced
+              {product.qb_synced_at && (
+                <span className="text-slate-400 font-normal">
+                  ·{" "}
+                  {new Date(product.qb_synced_at).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </span>
+              )}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+              <XCircle className="w-3.5 h-3.5" />
+              Not Synced
+            </span>
+          )}
+        </td>
+
         <td className="px-4 py-3">
           <div className="flex items-center gap-1">
             {isEditing ? (
@@ -262,8 +277,7 @@ function ProductRow({ product }: { product: Product }) {
                   type="button"
                   onClick={handleCancel}
                   disabled={isSaving}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors rounded disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                  title="Cancel"
+                  className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors rounded disabled:opacity-40 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -284,8 +298,7 @@ function ProductRow({ product }: { product: Product }) {
                   type="button"
                   onClick={() => setIsEditing(true)}
                   disabled={isDeleting}
-                  className="p-1.5 text-slate-300 hover:text-[#2db0b0] transition-colors rounded disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                  title="Edit product"
+                  className="p-1.5 text-slate-300 hover:text-[#2db0b0] transition-colors rounded disabled:opacity-40 cursor-pointer"
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
@@ -293,8 +306,7 @@ function ProductRow({ product }: { product: Product }) {
                   type="button"
                   onClick={() => setConfirmOpen(true)}
                   disabled={isDeleting}
-                  className="p-1.5 text-slate-300 hover:text-red-500 transition-colors rounded disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                  title="Delete product"
+                  className="p-1.5 text-slate-300 hover:text-red-500 transition-colors rounded disabled:opacity-40 cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -303,6 +315,176 @@ function ProductRow({ product }: { product: Product }) {
           </div>
         </td>
       </tr>
+    </>
+  );
+}
+
+// ─── Product Card (mobile) ────────────────────────────────────────────────────
+function ProductCard({ product }: { product: Product }) {
+  const dispatch = useAppDispatch();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState(product.name);
+  const [price, setPrice] = useState(String(product.price));
+  const [isSaving, setIsSaving] = useState(false);
+
+  async function handleSave() {
+    if (!product.id) return;
+    setIsSaving(true);
+    try {
+      const formData = new FormData();
+      formData.set("name", name);
+      formData.set("price", price);
+      await editProduct(product.id, formData);
+      dispatch(
+        updateProductInStore({
+          ...product,
+          name,
+          price: parseFloat(price) || 0,
+        }),
+      );
+      setIsEditing(false);
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleConfirmDelete() {
+    if (!product.id) return;
+    setIsDeleting(true);
+    try {
+      await deleteProduct(product.id);
+      dispatch(removeProductFromStore(product.id));
+      setConfirmOpen(false);
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  return (
+    <>
+      <ConfirmModal
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete Product?"
+        description={`"${product.name}" will be permanently removed. This action cannot be undone.`}
+        confirmLabel="Delete"
+        isLoading={isDeleting}
+        onConfirm={handleConfirmDelete}
+      />
+
+      <div className="p-4 border-b border-slate-100 last:border-0">
+        <div className="flex items-start justify-between gap-3">
+          {/* Left: icon + name + meta */}
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-[#2db0b0]/10 flex items-center justify-center shrink-0 mt-0.5">
+              <Package className="w-4 h-4 text-[#2db0b0]" />
+            </div>
+            <div className="flex-1 min-w-0 space-y-1">
+              {isEditing ? (
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-8 text-sm"
+                  disabled={isSaving}
+                />
+              ) : (
+                <p className="text-sm font-semibold text-slate-800 truncate">
+                  {product.name}
+                </p>
+              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                {isEditing ? (
+                  <Input
+                    value={price}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    onChange={(e) => setPrice(e.target.value)}
+                    className="h-7 text-sm w-28"
+                    disabled={isSaving}
+                  />
+                ) : (
+                  <span className="text-sm font-medium text-[#2db0b0]">
+                    ${Number(product.price).toFixed(2)}
+                  </span>
+                )}
+                <span className="text-xs text-slate-400">
+                  {product.created_at
+                    ? new Date(product.created_at).toLocaleDateString("en-PH", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })
+                    : "—"}
+                </span>
+              </div>
+              {/* QB status */}
+              <div>
+                {product.qb_item_id ? (
+                  <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
+                    <CheckCircle2 className="w-3 h-3" /> QB Synced
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+                    <XCircle className="w-3 h-3" /> Not Synced
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right: actions */}
+          <div className="flex items-center gap-1 shrink-0">
+            {isEditing ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setName(product.name);
+                    setPrice(String(product.price));
+                    setIsEditing(false);
+                  }}
+                  disabled={isSaving}
+                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <SubmitButton
+                  type="button"
+                  onClick={handleSave}
+                  isPending={isSaving}
+                  cta={<Check className="w-4 h-4" />}
+                  isPendingMesssage=""
+                  variant="ghost"
+                  size="icon-xs"
+                  classname="text-[#2db0b0] hover:bg-transparent cursor-pointer"
+                />
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setIsEditing(true)}
+                  disabled={isDeleting}
+                  className="p-1.5 text-slate-300 hover:text-[#2db0b0] rounded cursor-pointer"
+                >
+                  <Pencil className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmOpen(true)}
+                  disabled={isDeleting}
+                  className="p-1.5 text-slate-300 hover:text-red-500 rounded cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
     </>
   );
 }
@@ -320,9 +502,9 @@ export default function ProductsTable() {
   }, [items, search]);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col h-[calc(100vh-267px)]">
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col h-[calc(100vh-220px)] md:h-[calc(100vh-267px)]">
       {/* ── Card Header ── */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60 shrink-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-100 bg-slate-50/60 shrink-0">
         <div className="space-y-0.5">
           <h2 className="text-sm font-semibold text-slate-700">All Products</h2>
           <p className="text-xs text-slate-400">
@@ -338,14 +520,23 @@ export default function ProductsTable() {
         <AddProductModal />
       </div>
 
-      {/* ── Scrollable Table ── */}
+      {/* ── Scrollable Content ── */}
       <div className="overflow-auto flex-1">
-        <table className="w-full text-sm text-left">
+        {/* Mobile: card list */}
+        <div className="md:hidden">
+          {filtered.map((product) => (
+            <ProductCard key={product.id} product={product} />
+          ))}
+        </div>
+
+        {/* Desktop: table */}
+        <table className="hidden md:table w-full text-sm text-left">
           <thead className="sticky top-0 z-10">
             <tr className="bg-[#2db0b0] text-white">
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Price</th>
               <th className="px-4 py-3 font-medium">Date Added</th>
+              <th className="px-4 py-3 font-medium">QuickBooks</th>
               <th className="px-4 py-3 font-medium">Actions</th>
             </tr>
           </thead>

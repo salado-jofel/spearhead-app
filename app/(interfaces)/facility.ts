@@ -6,6 +6,8 @@ export interface Facility {
   contact: string;
   phone: string;
   status: string;
+  qb_customer_id?: string | null; 
+  qb_synced_at?: string | null; 
 }
 
 export type InsertFacilityPayload = Omit<Facility, "id" | "created_at">;

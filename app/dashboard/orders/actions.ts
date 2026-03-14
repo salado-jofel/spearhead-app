@@ -13,12 +13,13 @@ import type {
   InsertOrderPayload,
   UpdateOrderPayload,
 } from "@/app/(interfaces)/order";
-import { Facility } from "@/app/(interfaces)/facility";
-import { Product } from "@/app/(interfaces)/product";
+import type { Facility } from "@/app/(interfaces)/facility";
+import type { Product } from "@/app/(interfaces)/product";
+import { createQBInvoiceFromData } from "./quickbooks-actions";
 
 const ORDER_TABLE = "orders";
 const ORDER_COLUMNS =
-  "id, created_at, order_id, facility_id, product_id, amount, status, created_by, facilities(name), products(name)";
+  "id, created_at, order_id, facility_id, product_id, amount, status, created_by, qb_invoice_id, qb_invoice_status, qb_synced_at, facilities(name, qb_customer_id), products(name, qb_item_id)";
 const ORDERS_PATH = "/dashboard/orders";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -31,8 +32,11 @@ type RawOrder = {
   amount: number;
   status: string;
   created_by: string | null;
-  facilities: { name: string } | null;
-  products: { name: string } | null;
+  qb_invoice_id: string | null;
+  qb_invoice_status: string | null;
+  qb_synced_at: string | null;
+  facilities: { name: string; qb_customer_id: string | null } | null;
+  products: { name: string; qb_item_id: string | null } | null;
 };
 
 function flattenOrder(row: RawOrder): Order {
@@ -47,10 +51,14 @@ function flattenOrder(row: RawOrder): Order {
     created_by: row.created_by ?? undefined,
     facility_name: row.facilities?.name ?? "—",
     product_name: row.products?.name ?? "—",
+    facility_qb_customer_id: row.facilities?.qb_customer_id ?? null,
+    product_qb_item_id: row.products?.qb_item_id ?? null,
+    qb_invoice_id: row.qb_invoice_id ?? null,
+    qb_invoice_status: row.qb_invoice_status ?? null,
+    qb_synced_at: row.qb_synced_at ?? null,
   };
 }
 
-// ─── Helper: get current authenticated user ───────────────────────────────────
 async function getCurrentUser() {
   const supabase = await getSupabaseClient();
   const {
@@ -61,7 +69,7 @@ async function getCurrentUser() {
   return { user, supabase };
 }
 
-// ─── READ: current user's orders only ────────────────────────────────────────
+// ─── READ ─────────────────────────────────────────────────────────────────────
 export async function getAllOrders(): Promise<Order[]> {
   try {
     const { user, supabase } = await getCurrentUser();
@@ -80,7 +88,6 @@ export async function getAllOrders(): Promise<Order[]> {
 
     const orders = (data ?? []).map(flattenOrder);
 
-    // Fetch current user's email from profiles table
     const { data: profile } = await supabase
       .from("profiles")
       .select("id, email")
@@ -88,7 +95,6 @@ export async function getAllOrders(): Promise<Order[]> {
       .single();
 
     const email = profile?.email ?? user.email ?? undefined;
-
     return orders.map((o) => ({ ...o, created_by_email: email }));
   } catch (err) {
     console.error("[getAllOrders] Unexpected error:", err);
@@ -97,34 +103,84 @@ export async function getAllOrders(): Promise<Order[]> {
 }
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
-export async function addOrder(formData: FormData) {
-  try {
-    const { user } = await getCurrentUser();
+export async function addOrder(formData: FormData): Promise<Order> {
+  const { user, supabase } = await getCurrentUser();
 
-    const payload: InsertOrderPayload = {
-      order_id: formData.get("order_id") as string,
-      facility_id: formData.get("facility_id") as string,
-      product_id: formData.get("product_id") as string,
-      amount: parseFloat(formData.get("amount") as string) || 0,
+  const order_id    = formData.get("order_id")    as string;
+  const facility_id = formData.get("facility_id") as string;
+  const product_id  = formData.get("product_id")  as string;
+  const amount      = parseFloat(formData.get("amount") as string) || 0;
+
+  // ── Step 1: Save to DB first — always ────────────────────
+  const { data: insertedRow, error: insertError } = await supabase
+    .from(ORDER_TABLE)
+    .insert({
+      order_id,
+      facility_id,
+      product_id,
+      amount,
       status: "Processing",
       created_by: user.id,
-    };
+    })
+    .select("id")
+    .single();
 
-    const { error } = await dbInsert<InsertOrderPayload>({
-      table: ORDER_TABLE,
-      payload,
-    });
-
-    if (error) {
-      console.error("[addOrder] Supabase error:", error.message);
-      throw new Error("Failed to create order");
-    }
-
-    revalidatePath(ORDERS_PATH);
-  } catch (err) {
-    console.error("[addOrder] Unexpected error:", err);
-    throw new Error("An unexpected error occurred while creating the order");
+  if (insertError || !insertedRow) {
+    console.error("[addOrder] DB insert error:", insertError?.message);
+    throw new Error("Failed to save order to database.");
   }
+
+  const rowId = insertedRow.id as string;
+
+  // ── Step 2: Try QB invoice — non-blocking ────────────────
+  try {
+    const [{ data: facility }, { data: product }] = await Promise.all([
+      supabase.from("facilities").select("name, qb_customer_id").eq("id", facility_id).single(),
+      supabase.from("products").select("name, qb_item_id").eq("id", product_id).single(),
+    ]);
+
+    if (facility?.qb_customer_id && product?.qb_item_id) {
+      const qbInvoiceId = await createQBInvoiceFromData({
+        orderDocNumber: order_id,
+        qbCustomerId:   facility.qb_customer_id,
+        facilityName:   facility.name,
+        qbItemId:       product.qb_item_id,
+        productName:    product.name,
+        amount,
+      });
+
+      if (qbInvoiceId) {
+        await supabase
+          .from(ORDER_TABLE)
+          .update({
+            qb_invoice_id:     qbInvoiceId,
+            qb_invoice_status: "draft",
+            qb_synced_at:      new Date().toISOString(),
+          })
+          .eq("id", rowId);
+      }
+    } else {
+      console.warn("[addOrder] QB sync skipped — facility or product not yet synced to QB.");
+    }
+  } catch (qbErr) {
+    // No QB connected yet or sync failed — order already saved, ignore
+    console.warn("[addOrder] QB auto-sync failed (non-blocking):", qbErr);
+  }
+
+  // ── Step 3: Fetch full order with joins ───────────────────
+  const { data: row, error: fetchError } = await supabase
+    .from(ORDER_TABLE)
+    .select(ORDER_COLUMNS)
+    .eq("id", rowId)
+    .single();
+
+  if (fetchError || !row) {
+    console.error("[addOrder] Fetch after insert failed:", fetchError?.message);
+    throw new Error("Order saved but could not be retrieved.");
+  }
+
+  revalidatePath(ORDERS_PATH);
+  return flattenOrder(row as unknown as RawOrder);
 }
 
 // ─── UPDATE ───────────────────────────────────────────────────────────────────
@@ -204,7 +260,7 @@ export async function getActiveFacilities(): Promise<Facility[]> {
 export async function getAllProducts(): Promise<Product[]> {
   const { data, error } = await dbSelect<Product>({
     table: "products",
-    columns: "id, name, price", 
+    columns: "id, name, price",
     order: { column: "name", ascending: true },
   });
 
@@ -215,4 +271,3 @@ export async function getAllProducts(): Promise<Product[]> {
 
   return data ?? [];
 }
-

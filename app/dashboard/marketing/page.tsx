@@ -10,7 +10,7 @@ export default async function MarketingPage() {
 
   return (
     <Providers materials={materials}>
-      <div className="p-8 mx-auto space-y-6">
+      <div className="p-4 md:p-8 mx-auto space-y-6">
         <Header />
         <MarketingCards />
       </div>

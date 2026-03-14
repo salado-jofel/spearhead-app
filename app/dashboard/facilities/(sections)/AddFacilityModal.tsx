@@ -53,9 +53,9 @@ function FieldWrapper({
 
 export function AddFacilityModal() {
   const dispatch = useAppDispatch();
-  const [open, setOpen] = useState<boolean>(false);
-  const [type, setType] = useState<string>("");
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [open, setOpen] = useState(false);
+  const [type, setType] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleSubmit(formData: FormData) {
     formData.set("type", type);
@@ -66,7 +66,7 @@ export function AddFacilityModal() {
       setOpen(false);
       setType("");
     } catch (err) {
-      console.error("[AddFacilityModal] Error:", err);
+      console.error("[AddFacilityModal]", err);
     } finally {
       setIsSubmitting(false);
     }
@@ -80,15 +80,17 @@ export function AddFacilityModal() {
       }}
     >
       <DialogTrigger asChild>
-        <Button className="bg-[#2db0b0] hover:bg-[#249191] text-white shadow-sm">
+        {/* ✅ Full width on mobile, auto on sm+ */}
+        <Button className="bg-[#2db0b0] hover:bg-[#249191] text-white shadow-sm w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Add Facility
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="p-0 gap-0 overflow-hidden rounded-2xl max-w-md">
-        {/* ── Modal Header ── */}
-        <div className="bg-[#2db0b0] px-6 py-5">
+      {/* ✅ Respects screen edge on mobile, scrollable on small screens */}
+      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md p-0 gap-0 overflow-hidden rounded-2xl max-h-[90dvh] flex flex-col">
+        {/* Modal Header */}
+        <div className="bg-[#2db0b0] px-6 py-5 shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-lg">
               <Building2 className="w-5 h-5 text-white" />
@@ -104,16 +106,14 @@ export function AddFacilityModal() {
           </div>
         </div>
 
-        {/* ── Modal Body ── */}
+        {/* Modal Body — scrollable if screen is short */}
         <form
           onSubmit={async (e) => {
             e.preventDefault();
-            const formData = new FormData(e.currentTarget);
-            await handleSubmit(formData);
+            await handleSubmit(new FormData(e.currentTarget));
           }}
-          className="px-6 py-5 space-y-4"
+          className="px-6 py-5 space-y-4 overflow-y-auto"
         >
-          {/* Facility Name */}
           <FieldWrapper label="Facility Name">
             <div className="relative">
               <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -127,7 +127,6 @@ export function AddFacilityModal() {
             </div>
           </FieldWrapper>
 
-          {/* Facility Type */}
           <FieldWrapper label="Facility Type">
             <Select
               value={type}
@@ -139,7 +138,7 @@ export function AddFacilityModal() {
                 <SelectValue placeholder="Select facility type" />
               </SelectTrigger>
               <SelectContent>
-                {FACILITY_TYPES.map((t: string) => (
+                {FACILITY_TYPES.map((t) => (
                   <SelectItem key={t} value={t}>
                     {t}
                   </SelectItem>
@@ -148,7 +147,6 @@ export function AddFacilityModal() {
             </Select>
           </FieldWrapper>
 
-          {/* Contact Person */}
           <FieldWrapper label="Contact Person">
             <div className="relative">
               <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -162,7 +160,6 @@ export function AddFacilityModal() {
             </div>
           </FieldWrapper>
 
-          {/* Phone */}
           <FieldWrapper label="Phone">
             <div className="relative">
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
@@ -177,13 +174,13 @@ export function AddFacilityModal() {
             </div>
           </FieldWrapper>
 
-          {/* ── Actions ── */}
-          <div className="flex gap-2 pt-1">
+          {/* Actions */}
+          <div className="flex flex-col-reverse sm:flex-row gap-2 pt-1 pb-1">
             <Button
               type="button"
               variant="outline"
               disabled={isSubmitting}
-              className="flex-1 border-slate-200 text-slate-600 hover:bg-slate-50 text-sm disabled:opacity-50"
+              className="flex-1 border-slate-200 text-slate-600 hover:bg-slate-50 text-sm"
               onClick={() => setOpen(false)}
             >
               Cancel

@@ -39,7 +39,6 @@ export default function ProfileForm() {
     setSaving(true);
     try {
       await updateProfile(formData);
-
       dispatch(
         updateProfileInStore({
           first_name: formData.get("first_name") as string,
@@ -56,9 +55,9 @@ export default function ProfileForm() {
   }
 
   return (
-    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-6">
+    <div className="bg-white border border-slate-200 rounded-xl shadow-sm p-4 sm:p-6">
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* ── Row: First Name + Last Name ─────────────────────── */}
+        {/* ── Row: First Name + Last Name ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <FieldLabel icon={User} label="First Name" />
@@ -82,7 +81,7 @@ export default function ProfileForm() {
           </div>
         </div>
 
-        {/* ── Row: Email ──────────────────────────────────────── */}
+        {/* ── Row: Email ── */}
         <div>
           <FieldLabel icon={Mail} label="Email" color="text-emerald-500" />
           <Input
@@ -95,7 +94,7 @@ export default function ProfileForm() {
           />
         </div>
 
-        {/* ── Row: Phone ──────────────────────────────────────── */}
+        {/* ── Row: Phone ── */}
         <div>
           <FieldLabel icon={Phone} label="Phone" color="text-slate-400" />
           <Input
@@ -108,7 +107,7 @@ export default function ProfileForm() {
           />
         </div>
 
-        {/* ── Save Button ─────────────────────────────────────── */}
+        {/* ── Save Button ── */}
         <SubmitButton
           type="submit"
           isPending={saving}
@@ -121,7 +120,7 @@ export default function ProfileForm() {
           }
           variant={null}
           size="default"
-          classname="bg-[#2db0b0] hover:bg-[#249191] text-white"
+          classname="w-full sm:w-auto bg-[#2db0b0] hover:bg-[#249191] text-white"
         />
       </form>
     </div>
