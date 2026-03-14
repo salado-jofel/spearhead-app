@@ -18,6 +18,7 @@ import {
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import ConfirmModal from "@/app/(components)/ConfirmModal";
+import QuickBooksInvoiceBadge from "./QuickBooksInvoiceBadge";
 
 // ─── Only 3 statuses shown on the board ──────────────────────────────────────
 const BOARD_STATUSES = ["Processing", "Shipped", "Delivered"] as const;
@@ -148,6 +149,19 @@ function OrderCard({ order }: { order: Order }) {
         {/* ── Divider ── */}
         <div className="border-t border-slate-100" />
 
+        {/* ── QuickBooks Invoice Badge ── */}
+        <QuickBooksInvoiceBadge
+          orderId={order.id!}
+          orderDocNumber={order.order_id}
+          qbInvoiceId={order.qb_invoice_id}
+          qbInvoiceStatus={order.qb_invoice_status}
+          facilityQbCustomerId={order.facility_qb_customer_id}
+          productQbItemId={order.product_qb_item_id}
+        />
+
+        {/* ── Divider ── */}
+        <div className="border-t border-slate-100" />
+
         {/* ── Bottom Row ── */}
         <div className="flex items-center justify-between">
           <span className="text-sm font-bold text-slate-800">
@@ -224,7 +238,6 @@ function KanbanColumn({
 export default function KanbanBoard() {
   const items = useAppSelector((state) => state.orders.items);
 
-  // Only show orders that belong to the 3 board statuses
   const grouped = useMemo(() => {
     return BOARD_STATUSES.reduce<Record<BoardStatus, Order[]>>(
       (acc, status) => {

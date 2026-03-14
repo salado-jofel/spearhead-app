@@ -18,7 +18,7 @@ import { Product } from "@/app/(interfaces)/product";
 
 const ORDER_TABLE = "orders";
 const ORDER_COLUMNS =
-  "id, created_at, order_id, facility_id, product_id, amount, status, created_by, facilities(name), products(name)";
+  "id, created_at, order_id, facility_id, product_id, amount, status, created_by, qb_invoice_id, qb_invoice_status, qb_synced_at, facilities(name, qb_customer_id), products(name, qb_item_id)";
 const ORDERS_PATH = "/dashboard/orders";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -31,8 +31,11 @@ type RawOrder = {
   amount: number;
   status: string;
   created_by: string | null;
-  facilities: { name: string } | null;
-  products: { name: string } | null;
+  qb_invoice_id: string | null;
+  qb_invoice_status: string | null;
+  qb_synced_at: string | null;
+  facilities: { name: string; qb_customer_id: string | null } | null;
+  products: { name: string; qb_item_id: string | null } | null;
 };
 
 function flattenOrder(row: RawOrder): Order {
@@ -47,6 +50,11 @@ function flattenOrder(row: RawOrder): Order {
     created_by: row.created_by ?? undefined,
     facility_name: row.facilities?.name ?? "—",
     product_name: row.products?.name ?? "—",
+    facility_qb_customer_id: row.facilities?.qb_customer_id ?? null,
+    product_qb_item_id: row.products?.qb_item_id ?? null,
+    qb_invoice_id: row.qb_invoice_id ?? null,
+    qb_invoice_status: row.qb_invoice_status ?? null,
+    qb_synced_at: row.qb_synced_at ?? null,
   };
 }
 
@@ -204,7 +212,7 @@ export async function getActiveFacilities(): Promise<Facility[]> {
 export async function getAllProducts(): Promise<Product[]> {
   const { data, error } = await dbSelect<Product>({
     table: "products",
-    columns: "id, name, price", 
+    columns: "id, name, price",
     order: { column: "name", ascending: true },
   });
 
@@ -215,4 +223,3 @@ export async function getAllProducts(): Promise<Product[]> {
 
   return data ?? [];
 }
-

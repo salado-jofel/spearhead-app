@@ -14,12 +14,18 @@ export interface Order {
   product_id: string;
   amount: number;
   status: OrderStatus;
-  created_by?: string; // UUID from auth.users
-  // ── Joined ──────────────────────────────────────
+  created_by?: string;
   facility_name?: string;
   product_name?: string;
-  created_by_email?: string; // from profiles table join
+  created_by_email?: string;
+  qb_invoice_id?: string | null;
+  qb_invoice_status?: string | null;
+  qb_synced_at?: string | null;
+  facility_qb_customer_id?: string | null; 
+  product_qb_item_id?: string | null; 
 }
+
+
 
 export type InsertOrderPayload = Omit<
   Order,
