@@ -1,24 +1,25 @@
-// import { Navbar } from "@/components/navbar"; // From previous step
-// import { Hero } from "@/components/hero";
-// import { ScienceSection } from "@/components/science";
-// import { Benefits } from "@/components/benefits";
-// import { ContactForm } from "@/components/contact-form";
-
-import { SpearHeadMedical } from "./(sections)/SpearheadMedical";
-import { Product } from "./(sections)/Product";
 import { Hero } from "./(sections)/Hero";
 import { Navbar } from "./(sections)/Navbar";
 import { Footer } from "./(sections)/Footer";
+import { Contact } from "lucide-react";
+import { GettingStarted } from "./(sections)/GettingStarted";
+import { LiveDemo } from "./(sections)/LiveDemo";
+import { Testimonials } from "./(sections)/Testimonials";
+import { WhyUs } from "./(sections)/WhyUs";
+import { Product } from "./(sections)/Product";
 
 export default function Home() {
   return (
-    <main className="min-h-screen ">
+    <main className="min-h-screen">
       <Navbar />
       <Hero />
       <Product />
-      {/* <SpearHeadMedical /> */}
-      {/* <ContactForm /> */}
-     <Footer/>
+      <WhyUs />
+      <Testimonials />
+      <GettingStarted />
+      <LiveDemo />
+      <Contact />
+      <Footer />
     </main>
   );
 }

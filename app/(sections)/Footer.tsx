@@ -1,49 +1,79 @@
+"use client";
+
 import Link from "next/link";
+import { motion } from "framer-motion";
+import { VIEWPORT, staggerContainer, fadeUp } from "@/components/ui/animations";
 
 export function Footer() {
   return (
-    <footer className="bg-[#0d1f2d] text-white py-12 px-6 border-t border-white/5">
-      <div className="container mx-auto max-w-4xl text-center">
-        {/* Logo Section */}
-        <div className="flex flex-col items-center mb-8">
-          <div className="flex flex-col leading-none mb-2">
-            <span className="text-2xl font-black tracking-tighter uppercase">
-              Spearhead
-            </span>
-            <span className="text-[10px] tracking-[0.4em] text-emerald-400/80 uppercase font-medium">
-              Medical
-            </span>
-          </div>
-          <p className="text-slate-400 text-sm max-w-xs mx-auto leading-relaxed">
+    <footer className="bg-[#061d28] py-14 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6">
+        <motion.div
+          className="flex flex-col items-center"
+          initial="hidden"
+          whileInView="visible"
+          viewport={VIEWPORT}
+          variants={staggerContainer}
+        >
+          {/* Logo */}
+          <motion.div
+            variants={fadeUp}
+            className="flex items-center gap-2 mb-3"
+          >
+            <div className="w-7 h-7 rounded-full border-2 border-teal-400/60 flex items-center justify-center">
+              <span className="text-teal-400 text-xs font-bold">S</span>
+            </div>
+            <div>
+              <p className="text-white font-bold text-sm tracking-widest leading-none">
+                SPEARHEAD
+              </p>
+              <p className="text-white/40 text-[9px] tracking-[0.3em] leading-none mt-0.5">
+                MEDICAL
+              </p>
+            </div>
+          </motion.div>
+
+          <motion.p
+            variants={fadeUp}
+            className="text-white/40 text-sm text-center max-w-xs mb-8"
+          >
             Empowering independent reps with cutting-edge medical solutions.
-          </p>
-        </div>
+          </motion.p>
 
-        <nav className="flex flex-wrap justify-center gap-x-8 gap-y-4 mb-12">
-          {["Product", "Why Us", "Demo", "Contact Scottie"].map((item) => (
-            <Link
-              key={item}
-              href={`#${item.toLowerCase().replace(" ", "-")}`}
-              className="text-sm font-medium text-slate-300 hover:text-emerald-400 transition-colors"
-            >
-              {item}
-            </Link>
-          ))}
-        </nav>
+          {/* Nav Links */}
+          <motion.div
+            variants={fadeUp}
+            className="flex items-center justify-center gap-8 mb-10"
+          >
+            {[
+              { label: "Product", href: "#product" },
+              { label: "Why Us", href: "#why-us" },
+              { label: "Demo", href: "#demo" },
+              { label: "Contact Scottie", href: "#sp-contact" },
+            ].map((link) => (
+              <Link
+                key={link.label}
+                href={link.href}
+                className="text-white/50 hover:text-teal-400 text-sm transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </motion.div>
 
-        {/* Divider */}
-        <div className="w-full h-px bg-linear-to-r from-transparent via-white/10 to-transparent mb-8" />
-
-        {/* Legal Info */}
-        <div className="space-y-2">
-          <p className="text-[11px] text-slate-500 uppercase tracking-widest">
-            © 2026 Spearhead Medical. All rights reserved.
-          </p>
-          <p className="text-[10px] text-slate-600 italic">
-            This page is intended for prospective independent sales
-            representatives only.
-          </p>
-        </div>
+          <motion.div
+            variants={fadeUp}
+            className="border-t border-white/10 pt-8 w-full flex flex-col items-center gap-2"
+          >
+            <p className="text-white/30 text-xs">
+              © 2025 Spearhead Medical. All rights reserved.
+            </p>
+            <p className="text-white/20 text-xs">
+              This page is intended for prospective independent sales
+              representatives only.
+            </p>
+          </motion.div>
+        </motion.div>
       </div>
     </footer>
   );
