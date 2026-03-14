@@ -31,13 +31,10 @@ export default async function DashboardPage() {
 
   return (
     <Providers facilities={facilities} orders={orders}>
-      <div className="p-8  w-full mx-auto space-y-6 select-none h-full overflow-y-auto">
-        {/* ── Page Header ──────────────────────────────────────── */}
+      {/* Responsive padding: tighter on mobile */}
+      <div className="p-4 md:p-8 w-full mx-auto space-y-6 select-none">
         <Headers displayName={displayName} />
-        {/* ── Stat Cards ───────────────────────────────────────── */}
         <StatsCards />
-
-        {/* ── Recent Orders ────────────────────────────────────── */}
         <RecentOrdersTable />
       </div>
     </Providers>
