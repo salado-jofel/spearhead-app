@@ -2,6 +2,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { createQuickBooksInvoice } from "../orders/quickbooks-actions";
 
 const QB_CLIENT_ID = process.env.QB_CLIENT_ID!;
 const QB_CLIENT_SECRET = process.env.QB_CLIENT_SECRET!;
@@ -189,4 +190,42 @@ export async function disconnectQuickBooks(): Promise<void> {
   if (error) throw new Error("Failed to disconnect QuickBooks");
 
   redirect("/dashboard/quickbooks");
+}
+
+
+export async function syncAllOrdersToQuickBooks(): Promise<{
+  success: number;
+  failed: number;
+  messages: string[];
+}> {
+  const supabase = await createClient();
+  const { data: orders, error } = await supabase
+    .from("orders")
+    .select("id, order_id, qb_invoice_id")
+    .is("qb_invoice_id", null);
+
+  if (error || !orders) {
+    return {
+      success: 0,
+      failed: 1,
+      messages: ["Failed to fetch unsynced orders"],
+    };
+  }
+
+  let success = 0;
+  let failed = 0;
+  const messages: string[] = [];
+
+  for (const order of orders) {
+    const result = await createQuickBooksInvoice(order.id);
+    if (result.success) {
+      success++;
+      messages.push(`✅ ${order.order_id} synced`);
+    } else {
+      failed++;
+      messages.push(`❌ ${order.order_id}: ${result.message}`);
+    }
+  }
+
+  return { success, failed, messages };
 }

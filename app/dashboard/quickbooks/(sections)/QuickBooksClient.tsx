@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { disconnectQuickBooks } from "../actions";
+import BulkSync from "./BulkSync";
 import {
   CheckCircle2,
   XCircle,
@@ -48,7 +49,6 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
   if (!connection) {
     return (
       <div className="max-w-2xl space-y-6">
-        {/* Status Card */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
           <div className="flex items-center gap-4 mb-6">
             <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center">
@@ -95,7 +95,6 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
           </a>
         </div>
 
-        {/* Info Card */}
         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
           <div className="flex items-start gap-3">
             <Shield className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
@@ -121,7 +120,11 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
   const isAccessExpired = accessExpiry < new Date();
   const lastUpdated = new Date(connection.updated_at).toLocaleDateString(
     "en-US",
-    { year: "numeric", month: "long", day: "numeric" },
+    {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    },
   );
 
   return (
@@ -149,8 +152,6 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
               </div>
             </div>
           </div>
-
-          {/* Environment Badge */}
           <span
             className={`text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide ${
               connection.environment === "sandbox"
@@ -162,7 +163,6 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
           </span>
         </div>
 
-        {/* Company Info */}
         <div className="space-y-3 mb-6">
           <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
             <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
@@ -173,21 +173,17 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
               </p>
             </div>
           </div>
-
           <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
             <Shield className="w-4 h-4 text-slate-400 shrink-0" />
             <div>
               <p className="text-xs text-slate-400">Token Status</p>
               <p
-                className={`text-sm font-semibold ${
-                  isAccessExpired ? "text-red-500" : "text-emerald-600"
-                }`}
+                className={`text-sm font-semibold ${isAccessExpired ? "text-red-500" : "text-emerald-600"}`}
               >
                 {isAccessExpired ? "Expired — needs refresh" : "Active"}
               </p>
             </div>
           </div>
-
           <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
             <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
             <div>
@@ -197,7 +193,6 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
               </p>
             </div>
           </div>
-
           <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
             <RefreshCw className="w-4 h-4 text-slate-400 shrink-0" />
             <div>
@@ -213,7 +208,6 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
           </div>
         </div>
 
-        {/* Disconnect Button */}
         <button
           onClick={handleDisconnect}
           disabled={isDisconnecting}
@@ -251,6 +245,9 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
           </div>
         </div>
       )}
+
+      {/* Bulk Re-sync — only shown when connected */}
+      <BulkSync />
     </div>
   );
 }

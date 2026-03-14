@@ -2,21 +2,14 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { qbRequest } from "@/utils/quickbooks/client";
-import { revalidatePath } from "next/cache";
 
 interface QBCustomer {
   Id?: string;
   SyncToken?: string;
   DisplayName: string;
   CompanyName?: string;
-  PrimaryPhone?: {
-    FreeFormNumber: string;
-  };
-  BillAddr?: {
-    Line1?: string;
-    City?: string;
-    Country?: string;
-  };
+  PrimaryPhone?: { FreeFormNumber: string };
+  BillAddr?: { Line1?: string; City?: string; Country?: string };
   Active: boolean;
 }
 
@@ -24,14 +17,40 @@ interface QBCustomerResponse {
   Customer: QBCustomer;
 }
 
-// ─── Sync single facility to QB Customer ─────────────────────────────────────
+// ─── Pure QB helper — creates a customer and returns the ID ───────────────────
+// No Supabase interaction. Used by addFacility before inserting.
+export async function createQBCustomer(
+  name: string,
+  phone: string | null,
+  isActive: boolean,
+): Promise<string | null> {
+  try {
+    const payload: QBCustomer = {
+      DisplayName: name,
+      CompanyName: name,
+      Active: isActive,
+      ...(phone && { PrimaryPhone: { FreeFormNumber: phone } }),
+    };
+
+    const created = await qbRequest<QBCustomerResponse>(
+      "POST",
+      "/customer",
+      payload,
+    );
+    return created?.Customer?.Id ?? null;
+  } catch (err) {
+    console.error("[createQBCustomer] Error:", err);
+    return null;
+  }
+}
+
+// ─── Sync single facility to QB Customer (used for edit + bulk re-sync) ───────
 export async function syncFacilityToQuickBooks(
   facilityId: string,
 ): Promise<{ success: boolean; message: string }> {
   try {
     const supabase = await createClient();
 
-    // 1. Get facility data
     const { data: facility, error: facilityError } = await supabase
       .from("facilities")
       .select("*")
@@ -44,28 +63,24 @@ export async function syncFacilityToQuickBooks(
 
     console.log("[QB Facility] Syncing facility:", facility.name);
 
-    // 2. Build QB Customer payload
     const customerPayload: QBCustomer = {
       DisplayName: facility.name,
       CompanyName: facility.name,
       Active: facility.status === "Active",
       ...(facility.phone && {
-        PrimaryPhone: {
-          FreeFormNumber: facility.phone,
-        },
+        PrimaryPhone: { FreeFormNumber: facility.phone },
       }),
     };
 
     let qbCustomerId: string;
 
-    // 3. If already synced — update existing customer
     if (facility.qb_customer_id) {
+      // Update existing QB customer
       console.log(
         "[QB Facility] Updating existing QB customer:",
         facility.qb_customer_id,
       );
 
-      // Get current SyncToken first (required for updates)
       const existing = await qbRequest<QBCustomerResponse>(
         "GET",
         `/customer/${facility.qb_customer_id}`,
@@ -90,7 +105,7 @@ export async function syncFacilityToQuickBooks(
 
       qbCustomerId = updated.Customer.Id;
     } else {
-      // 4. Create new QB customer
+      // Create new QB customer
       console.log("[QB Facility] Creating new QB customer");
 
       const created = await qbRequest<QBCustomerResponse>(
@@ -106,7 +121,7 @@ export async function syncFacilityToQuickBooks(
       qbCustomerId = created.Customer.Id;
     }
 
-    // 5. Save QB customer ID back to Supabase
+    // Save QB customer ID back to Supabase
     const { error: updateError } = await supabase
       .from("facilities")
       .update({
@@ -116,7 +131,6 @@ export async function syncFacilityToQuickBooks(
       .eq("id", facilityId);
 
     if (updateError) {
-      console.error("[QB Facility] Supabase update error:", updateError);
       return {
         success: false,
         message: "Customer created in QB but failed to save sync status",
@@ -125,7 +139,7 @@ export async function syncFacilityToQuickBooks(
 
     console.log("[QB Facility] Sync successful! QB Customer ID:", qbCustomerId);
 
-    revalidatePath("/dashboard/facilities");
+    // NOTE: revalidatePath removed — caller (actions.ts) handles revalidation
 
     return {
       success: true,

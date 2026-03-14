@@ -2,7 +2,6 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { qbRequest } from "@/utils/quickbooks/client";
-import { revalidatePath } from "next/cache";
 
 interface QBItem {
   Id?: string;
@@ -11,10 +10,7 @@ interface QBItem {
   Description?: string;
   UnitPrice: number;
   Type: string;
-  IncomeAccountRef: {
-    value: string;
-    name?: string;
-  };
+  IncomeAccountRef: { value: string; name?: string };
   Active: boolean;
 }
 
@@ -22,17 +18,7 @@ interface QBItemResponse {
   Item: QBItem;
 }
 
-interface QBAccountResponse {
-  QueryResponse: {
-    Account?: Array<{
-      Id: string;
-      Name: string;
-      AccountType: string;
-    }>;
-  };
-}
-
-// ─── Get or create income account ────────────────────────────────────────────
+// ─── Get income account ref ───────────────────────────────────────────────────
 async function getIncomeAccountRef(): Promise<{
   value: string;
   name: string;
@@ -72,8 +58,6 @@ async function getIncomeAccountRef(): Promise<{
   const data = await response.json();
   const accounts = data?.QueryResponse?.Account;
 
-  console.log("[QB Product] Income accounts found:", accounts?.length ?? 0);
-
   if (accounts && accounts.length > 0) {
     return { value: accounts[0].Id, name: accounts[0].Name };
   }
@@ -81,15 +65,44 @@ async function getIncomeAccountRef(): Promise<{
   return null;
 }
 
+// ─── Pure QB helper — creates a QB item and returns the ID ───────────────────
+// No Supabase interaction. Used by addProduct before inserting.
+export async function createQBItem(
+  name: string,
+  price: number,
+): Promise<string | null> {
+  try {
+    const incomeAccountRef = await getIncomeAccountRef();
 
-// ─── Sync single product to QB Item ──────────────────────────────────────────
+    if (!incomeAccountRef) {
+      console.error("[createQBItem] No income account found");
+      return null;
+    }
+
+    const payload: QBItem = {
+      Name: name,
+      Description: name,
+      UnitPrice: price,
+      Type: "Service",
+      IncomeAccountRef: incomeAccountRef,
+      Active: true,
+    };
+
+    const created = await qbRequest<QBItemResponse>("POST", "/item", payload);
+    return created?.Item?.Id ?? null;
+  } catch (err) {
+    console.error("[createQBItem] Error:", err);
+    return null;
+  }
+}
+
+// ─── Sync single product to QB Item (used for edit + bulk re-sync) ────────────
 export async function syncProductToQuickBooks(
   productId: string,
 ): Promise<{ success: boolean; message: string }> {
   try {
     const supabase = await createClient();
 
-    // 1. Get product data
     const { data: product, error: productError } = await supabase
       .from("products")
       .select("*")
@@ -102,7 +115,6 @@ export async function syncProductToQuickBooks(
 
     console.log("[QB Product] Syncing product:", product.name);
 
-    // 2. Get income account reference (required for QB items)
     const incomeAccountRef = await getIncomeAccountRef();
 
     if (!incomeAccountRef) {
@@ -112,7 +124,6 @@ export async function syncProductToQuickBooks(
       };
     }
 
-    // 3. Build QB Item payload
     const itemPayload: QBItem = {
       Name: product.name,
       Description: product.name,
@@ -124,7 +135,6 @@ export async function syncProductToQuickBooks(
 
     let qbItemId: string;
 
-    // 4. If already synced — update existing item
     if (product.qb_item_id) {
       console.log(
         "[QB Product] Updating existing QB item:",
@@ -137,10 +147,7 @@ export async function syncProductToQuickBooks(
       );
 
       if (!existing?.Item?.SyncToken) {
-        return {
-          success: false,
-          message: "Failed to fetch existing QB item",
-        };
+        return { success: false, message: "Failed to fetch existing QB item" };
       }
 
       const updated = await qbRequest<QBItemResponse>("POST", "/item", {
@@ -155,7 +162,6 @@ export async function syncProductToQuickBooks(
 
       qbItemId = updated.Item.Id;
     } else {
-      // 5. Create new QB item
       console.log("[QB Product] Creating new QB item");
 
       const created = await qbRequest<QBItemResponse>(
@@ -171,7 +177,6 @@ export async function syncProductToQuickBooks(
       qbItemId = created.Item.Id;
     }
 
-    // 6. Save QB item ID back to Supabase
     const { error: updateError } = await supabase
       .from("products")
       .update({
@@ -181,7 +186,6 @@ export async function syncProductToQuickBooks(
       .eq("id", productId);
 
     if (updateError) {
-      console.error("[QB Product] Supabase update error:", updateError);
       return {
         success: false,
         message: "Item created in QB but failed to save sync status",
@@ -190,7 +194,7 @@ export async function syncProductToQuickBooks(
 
     console.log("[QB Product] Sync successful! QB Item ID:", qbItemId);
 
-    revalidatePath("/dashboard/products");
+    // NOTE: revalidatePath removed — caller (actions.ts) handles revalidation
 
     return {
       success: true,

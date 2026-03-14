@@ -28,8 +28,9 @@ import {
   Check,
   Plus,
   DollarSign,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
-import SyncToQuickBooks from "./SyncToQuickBooks";
 
 // ─── Add Product Modal ────────────────────────────────────────────────────────
 function AddProductModal() {
@@ -251,15 +252,28 @@ function ProductRow({ product }: { product: Product }) {
             : "—"}
         </td>
 
-        {/* QuickBooks Sync */}
+        {/* QuickBooks — display only, auto-synced */}
         <td className="px-4 py-3">
-          {product.id && (
-            <SyncToQuickBooks
-              productId={product.id}
-              productName={product.name}
-              qbItemId={product.qb_item_id}
-              qbSyncedAt={product.qb_synced_at}
-            />
+          {product.qb_item_id ? (
+            <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              QB Synced
+              {product.qb_synced_at && (
+                <span className="text-slate-400 font-normal">
+                  ·{" "}
+                  {new Date(product.qb_synced_at).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                </span>
+              )}
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-xs text-slate-400">
+              <XCircle className="w-3.5 h-3.5" />
+              Not Synced
+            </span>
           )}
         </td>
 
