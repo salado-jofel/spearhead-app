@@ -234,10 +234,10 @@ export async function syncAllProductsToQuickBooks(): Promise<{
     const result = await syncProductToQuickBooks(product.id);
     if (result.success) {
       success++;
-      messages.push(`✅ ${product.name}: ${result.message}`);
+      messages.push(`${product.name}: ${result.message}`);
     } else {
       failed++;
-      messages.push(`❌ ${product.name}: ${result.message}`);
+      messages.push(`${product.name}: ${result.message}`);
     }
   }
 

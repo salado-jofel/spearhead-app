@@ -276,10 +276,10 @@ export async function syncAllOrdersToQuickBooks(): Promise<{
     const result = await createQuickBooksInvoice(order.id);
     if (result.success) {
       success++;
-      messages.push(`✅ ${order.order_id} synced`);
+      messages.push(`${order.order_id} synced`);
     } else {
       failed++;
-      messages.push(`❌ ${order.order_id}: ${result.message}`);
+      messages.push(`${order.order_id}: ${result.message}`);
     }
   }
 

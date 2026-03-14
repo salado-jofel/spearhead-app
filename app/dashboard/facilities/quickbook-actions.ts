@@ -179,10 +179,10 @@ export async function syncAllFacilitiesToQuickBooks(): Promise<{
     const result = await syncFacilityToQuickBooks(facility.id);
     if (result.success) {
       success++;
-      messages.push(`✅ ${facility.name}: ${result.message}`);
+      messages.push(`${facility.name}: ${result.message}`);
     } else {
       failed++;
-      messages.push(`❌ ${facility.name}: ${result.message}`);
+      messages.push(`${facility.name}: ${result.message}`);
     }
   }
 
