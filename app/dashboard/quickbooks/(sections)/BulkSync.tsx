@@ -50,7 +50,8 @@ function SyncCard({ icon, title, description, onSync }: SyncCardProps) {
 
   return (
     <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
-      <div className="flex items-center justify-between">
+      {/* ↓ flex-wrap so button drops below on very small screens */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-[#2db0b0]/10 flex items-center justify-center shrink-0">
             <span className="text-[#2db0b0]">{icon}</span>
@@ -80,14 +81,9 @@ function SyncCard({ icon, title, description, onSync }: SyncCardProps) {
         </button>
       </div>
 
-      {/* Result */}
       {result && (
         <div
-          className={`rounded-lg p-3 text-xs space-y-1 ${
-            result.failed === 0
-              ? "bg-emerald-50 border border-emerald-100"
-              : "bg-red-50 border border-red-100"
-          }`}
+          className={`rounded-lg p-3 text-xs space-y-1 ${result.failed === 0 ? "bg-emerald-50 border border-emerald-100" : "bg-red-50 border border-red-100"}`}
         >
           <div className="flex items-center gap-1.5 font-medium">
             {result.failed === 0 ? (
@@ -124,7 +120,7 @@ function SyncCard({ icon, title, description, onSync }: SyncCardProps) {
 
 export default function BulkSync() {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+    <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm space-y-4">
       <div>
         <h3 className="text-sm font-bold text-slate-700">Bulk Re-sync</h3>
         <p className="text-xs text-slate-400 mt-0.5">
@@ -138,14 +134,12 @@ export default function BulkSync() {
         description="Re-sync all facilities as QB Customers"
         onSync={syncAllFacilitiesToQuickBooks}
       />
-
       <SyncCard
         icon={<Package className="w-4 h-4" />}
         title="Products"
         description="Re-sync all products as QB Items"
         onSync={syncAllProductsToQuickBooks}
       />
-
       <SyncCard
         icon={<FileText className="w-4 h-4" />}
         title="Orders"

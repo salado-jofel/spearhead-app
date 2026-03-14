@@ -10,7 +10,7 @@ export default async function OrdersPage() {
 
   return (
     <Providers orders={orders}>
-      <div className="p-8 w-full mx-auto space-y-6 select-none h-full overflow-y-auto ">
+      <div className="p-4 md:p-8 w-full mx-auto space-y-6 select-none h-full overflow-y-auto">
         <Header />
         <KanbanBoard />
       </div>

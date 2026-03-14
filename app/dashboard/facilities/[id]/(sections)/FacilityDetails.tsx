@@ -38,7 +38,6 @@ const FACILITY_TYPES: string[] = [
 
 const STATUS_OPTIONS: string[] = ["Active", "Inactive", "Pending"];
 
-// ─── Field Row ────────────────────────────────────────────────────────────────
 function FieldRow({
   icon,
   label,
@@ -71,7 +70,6 @@ function FieldRow({
   );
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 export default function FacilityDetails() {
   const dispatch = useAppDispatch();
   const item = useAppSelector((state) => state.facility.item);
@@ -118,7 +116,7 @@ export default function FacilityDetails() {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xl">
       {/* ── Card Header ── */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-100 bg-slate-50/60">
         <div className="space-y-0.5">
           <h2 className="text-sm font-semibold text-slate-700">
             Facility Information
@@ -140,8 +138,8 @@ export default function FacilityDetails() {
             }}
             className="text-[#2db0b0] border-[#2db0b0]/40 hover:bg-teal-50 hover:border-[#2db0b0]"
           >
-            <Pencil className="w-3.5 h-3.5 mr-1.5" />
-            Edit Details
+            <Pencil className="w-3.5 h-3.5 sm:mr-1.5" />
+            <span className="hidden sm:inline">Edit Details</span>
           </Button>
         ) : (
           <div className="flex items-center gap-2">
@@ -153,8 +151,8 @@ export default function FacilityDetails() {
               disabled={isSaving}
               className="text-slate-500 hover:text-slate-700 disabled:opacity-50"
             >
-              <X className="w-3.5 h-3.5 mr-1.5" />
-              Cancel
+              <X className="w-3.5 h-3.5 sm:mr-1.5" />
+              <span className="hidden sm:inline">Cancel</span>
             </Button>
 
             <SubmitButton
@@ -164,8 +162,8 @@ export default function FacilityDetails() {
               isPendingMesssage="Saving..."
               cta={
                 <>
-                  <Check className="w-3.5 h-3.5 mr-1.5" />
-                  Save Changes
+                  <Check className="w-3.5 h-3.5 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Save Changes</span>
                 </>
               }
               variant={null}
@@ -176,7 +174,7 @@ export default function FacilityDetails() {
         )}
       </div>
 
-      {/* ── Card Body ── */}
+      {/* ── Card Body (unchanged) ── */}
       <form id="facility-edit-form" onSubmit={handleSubmit} className="p-2">
         <div className="grid grid-cols-1 md:grid-cols-2">
           <FieldRow

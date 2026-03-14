@@ -49,9 +49,9 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
   if (!connection) {
     return (
       <div className="max-w-2xl space-y-6">
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center">
+            <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center shrink-0">
               <img
                 src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/QuickBooks_Logo.svg/200px-QuickBooks_Logo.svg.png"
                 alt="QuickBooks"
@@ -95,7 +95,7 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
           </a>
         </div>
 
-        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5">
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 sm:p-5">
           <div className="flex items-start gap-3">
             <Shield className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" />
             <div>
@@ -130,10 +130,11 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
   return (
     <div className="max-w-2xl space-y-6">
       {/* Connected Status Card */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
+        {/* ↓ flex-wrap so environment badge wraps on small screens */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center">
+            <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center shrink-0">
               <img
                 src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/QuickBooks_Logo.svg/200px-QuickBooks_Logo.svg.png"
                 alt="QuickBooks"
@@ -229,7 +230,7 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
 
       {/* Sandbox Warning */}
       {connection.environment === "sandbox" && (
-        <div className="bg-yellow-50 border border-yellow-100 rounded-2xl p-5">
+        <div className="bg-yellow-50 border border-yellow-100 rounded-2xl p-4 sm:p-5">
           <div className="flex items-start gap-3">
             <Shield className="w-5 h-5 text-yellow-500 mt-0.5 shrink-0" />
             <div>
@@ -246,7 +247,6 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
         </div>
       )}
 
-      {/* Bulk Re-sync — only shown when connected */}
       <BulkSync />
     </div>
   );

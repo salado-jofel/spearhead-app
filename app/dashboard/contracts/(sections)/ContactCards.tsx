@@ -40,14 +40,15 @@ function ContractCard({ card }: { card: ContractMaterial }) {
       link.click();
       document.body.removeChild(link);
     } catch (err) {
-      console.error("[handleDownload] Error:", err);
+      console.error("[handleDownload]", err);
     } finally {
       setIsDownloading(false);
     }
   }
 
   return (
-    <div className="group bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col w-full max-w-70">
+    // ✅ Removed max-w-70 — grid controls sizing now
+    <div className="group bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col w-full">
       {/* Header */}
       <div className="bg-linear-to-br from-[#2db0b0] to-[#1a8f8f] p-5 relative overflow-hidden">
         <div className="absolute -top-4 -right-4 w-24 h-24 rounded-full bg-white/10" />
@@ -79,7 +80,6 @@ function ContractCard({ card }: { card: ContractMaterial }) {
         <p className="text-sm text-slate-500 leading-relaxed line-clamp-3">
           {card.description}
         </p>
-
         <Button
           type="button"
           onClick={handleDownload}
@@ -123,7 +123,8 @@ export default function ContractCards() {
   }
 
   return (
-    <div className="flex flex-wrap gap-5">
+    // ✅ Responsive grid: 1 col mobile → 2 col tablet → 3 col desktop → 4 col xl
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
       {items.map((card) => (
         <ContractCard key={card.id} card={card} />
       ))}

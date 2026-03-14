@@ -9,7 +9,7 @@ export default async function ProductsPage() {
 
   return (
     <Providers products={products}>
-      <div className="p-8 w-full mx-auto space-y-6 select-none h-full overflow-y-auto ">
+      <div className="p-4 md:p-8 w-full mx-auto space-y-6 select-none h-full overflow-y-auto">
         <Header />
         <SearchFilterBar />
         <ProductsTable />

@@ -15,11 +15,10 @@ interface Props {
 export default async function QuickBooksCallbackPage({ searchParams }: Props) {
   const params = await searchParams;
 
-  // ─── Handle QB OAuth error ────────────────────────────────────────
   if (params.error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center border border-red-100">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 max-w-md w-full text-center border border-red-100">
           <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-7 h-7 text-red-500" />
           </div>
@@ -40,11 +39,10 @@ export default async function QuickBooksCallbackPage({ searchParams }: Props) {
     );
   }
 
-  // ─── Handle missing params ────────────────────────────────────────
   if (!params.code || !params.realmId) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center border border-yellow-100">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 max-w-md w-full text-center border border-yellow-100">
           <div className="w-14 h-14 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-7 h-7 text-yellow-500" />
           </div>
@@ -66,19 +64,17 @@ export default async function QuickBooksCallbackPage({ searchParams }: Props) {
     );
   }
 
-  // ─── Exchange code for tokens ─────────────────────────────────────
   try {
     await exchangeCodeForTokens(params.code, params.realmId);
   } catch (err) {
-    // NEXT_REDIRECT is not a real error — let it propagate
     if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) {
       throw err;
     }
 
     console.error("[Callback] Error:", err);
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center border border-red-100">
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+        <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 max-w-md w-full text-center border border-red-100">
           <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-7 h-7 text-red-500" />
           </div>
@@ -99,11 +95,9 @@ export default async function QuickBooksCallbackPage({ searchParams }: Props) {
     );
   }
 
-
-  // ─── Success — redirect handled inside exchangeCodeForTokens ─────
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50">
-      <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 max-w-md w-full text-center">
         <div className="w-14 h-14 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <div className="w-6 h-6 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
         </div>

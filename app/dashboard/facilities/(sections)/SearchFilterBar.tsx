@@ -20,25 +20,29 @@ export default function SearchFilterBar() {
   }, [items]);
 
   return (
-    <div className="flex items-center gap-2 mb-4 shadow-2xl">
+    // ✅ Stack on mobile, side-by-side on sm+
+    <div className="flex flex-col sm:flex-row gap-2 mb-4">
+      {/* Search — always full width on its row */}
       <div className="relative flex-1">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
         <input
           type="text"
-          placeholder="Search..."
+          placeholder="Search facilities..."
           value={search}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             dispatch(setSearch(e.target.value))
           }
-          className="w-full pl-9 bg-white pr-4 py-3 border border-slate-300 rounded-lg text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent"
+          className="w-full pl-9 pr-4 py-3 bg-white border border-slate-300 rounded-lg text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-teal-400 focus:border-transparent shadow-sm"
         />
       </div>
+
+      {/* Type filter — full width on mobile, auto on sm+ */}
       <select
         value={typeFilter}
         onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
           dispatch(setTypeFilter(e.target.value))
         }
-        className="border border-slate-300 rounded-lg px-3 py-3 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white"
+        className="w-full sm:w-auto border border-slate-300 rounded-lg px-3 py-3 text-sm text-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-400 bg-white shadow-sm"
       >
         {typeOptions.map((t: string) => (
           <option key={t} value={t}>

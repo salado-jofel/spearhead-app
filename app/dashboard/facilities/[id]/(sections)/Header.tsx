@@ -54,8 +54,8 @@ export default function Header() {
         </button>
 
         {/* ── Hero Card ── */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl">
-          <div className="flex items-center justify-between">
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-2xl">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
               {/* ── Icon Avatar ── */}
               <div className="w-14 h-14 rounded-xl bg-[#2db0b0]/10 flex items-center justify-center shrink-0">
@@ -64,7 +64,7 @@ export default function Header() {
 
               {/* ── Name + Meta ── */}
               <div className="space-y-1">
-                <h1 className="text-2xl font-bold text-slate-800">
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
                   {item?.name ?? "—"}
                 </h1>
                 <div className="flex items-center gap-2">
@@ -82,7 +82,7 @@ export default function Header() {
               variant="outline"
               onClick={() => setConfirmOpen(true)}
               disabled={isDeleting}
-              className="text-red-400 border-red-200 hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all disabled:opacity-50"
+              className="self-start sm:self-auto text-red-400 border-red-200 hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all disabled:opacity-50"
             >
               <Trash2 className="w-4 h-4 mr-2" />
               Delete Facility

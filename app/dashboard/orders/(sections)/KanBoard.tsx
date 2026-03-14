@@ -20,39 +20,42 @@ import { Button } from "@/components/ui/button";
 import ConfirmModal from "@/app/(components)/ConfirmModal";
 import QuickBooksInvoiceBadge from "./QuickBooksInvoiceBadge";
 
-// ─── Only 3 statuses shown on the board ──────────────────────────────────────
+// ─── Statuses ─────────────────────────────────────────────────────────────────
 const BOARD_STATUSES = ["Processing", "Shipped", "Delivered"] as const;
 type BoardStatus = (typeof BOARD_STATUSES)[number];
 
-// ─── Status color config ──────────────────────────────────────────────────────
+// ─── Status config ────────────────────────────────────────────────────────────
 const STATUS_CONFIG: Record<
   BoardStatus,
-  { badge: string; dot: string; next?: BoardStatus }
+  { badge: string; dot: string; tab: string; next?: BoardStatus }
 > = {
   Processing: {
     badge: "bg-yellow-50 text-yellow-600",
     dot: "bg-yellow-400",
+    tab: "text-yellow-600",
     next: "Shipped",
   },
   Shipped: {
     badge: "bg-purple-50 text-purple-600",
     dot: "bg-purple-400",
+    tab: "text-purple-600",
     next: "Delivered",
   },
   Delivered: {
     badge: "bg-emerald-50 text-emerald-600",
     dot: "bg-emerald-400",
+    tab: "text-emerald-600",
     next: undefined,
   },
 };
 
-// ─── Order Card ───────────────────────────────────────────────────────────────
+// ─── Order Card (unchanged — already card-based, works great on mobile) ───────
 function OrderCard({ order }: { order: Order }) {
   const dispatch = useAppDispatch();
   const config = STATUS_CONFIG[order.status as BoardStatus];
-  const [isAdvancing, setIsAdvancing] = useState<boolean>(false);
-  const [isDeleting, setIsDeleting] = useState<boolean>(false);
-  const [confirmOpen, setConfirmOpen] = useState<boolean>(false);
+  const [isAdvancing, setIsAdvancing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   async function handleAdvance() {
     if (!order.id || !config?.next || isAdvancing) return;
@@ -63,7 +66,7 @@ function OrderCard({ order }: { order: Order }) {
       await updateOrderStatus(order.id, formData);
       dispatch(updateOrderInStore({ ...order, status: config.next }));
     } catch (err) {
-      console.error("[handleAdvance] Error:", err);
+      console.error("[handleAdvance]", err);
     } finally {
       setIsAdvancing(false);
     }
@@ -76,7 +79,7 @@ function OrderCard({ order }: { order: Order }) {
       await deleteOrder(order.id);
       dispatch(removeOrderFromStore(order.id));
     } catch (err) {
-      console.error("[handleDelete] Error:", err);
+      console.error("[handleDelete]", err);
     } finally {
       setIsDeleting(false);
       setConfirmOpen(false);
@@ -96,7 +99,7 @@ function OrderCard({ order }: { order: Order }) {
       />
 
       <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-sm hover:shadow-md transition-shadow">
-        {/* ── Top Row ── */}
+        {/* Top Row */}
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-[#2db0b0] tracking-wide">
             {order.order_id}
@@ -108,13 +111,12 @@ function OrderCard({ order }: { order: Order }) {
             onClick={() => setConfirmOpen(true)}
             disabled={isDeleting}
             className="h-6 w-6 text-slate-300 hover:text-red-500 hover:bg-red-50 cursor-pointer"
-            title="Delete order"
           >
             <Trash2 className="w-3.5 h-3.5" />
           </Button>
         </div>
 
-        {/* ── Product ── */}
+        {/* Product */}
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-[#2db0b0]/10 flex items-center justify-center shrink-0">
             <Package className="w-3.5 h-3.5 text-[#2db0b0]" />
@@ -124,7 +126,7 @@ function OrderCard({ order }: { order: Order }) {
           </span>
         </div>
 
-        {/* ── Facility ── */}
+        {/* Facility */}
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
             <Building2 className="w-3.5 h-3.5 text-slate-400" />
@@ -134,7 +136,7 @@ function OrderCard({ order }: { order: Order }) {
           </span>
         </div>
 
-        {/* ── Created By ── */}
+        {/* Created By */}
         {order.created_by_email && (
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
@@ -146,10 +148,8 @@ function OrderCard({ order }: { order: Order }) {
           </div>
         )}
 
-        {/* ── Divider ── */}
         <div className="border-t border-slate-100" />
 
-        {/* ── QuickBooks Invoice Badge ── */}
         <QuickBooksInvoiceBadge
           orderId={order.id!}
           orderDocNumber={order.order_id}
@@ -159,15 +159,13 @@ function OrderCard({ order }: { order: Order }) {
           productQbItemId={order.product_qb_item_id}
         />
 
-        {/* ── Divider ── */}
         <div className="border-t border-slate-100" />
 
-        {/* ── Bottom Row ── */}
+        {/* Bottom Row */}
         <div className="flex items-center justify-between">
           <span className="text-sm font-bold text-slate-800">
             ${Number(order.amount).toFixed(2)}
           </span>
-
           {config?.next && (
             <Button
               type="button"
@@ -176,7 +174,6 @@ function OrderCard({ order }: { order: Order }) {
               onClick={handleAdvance}
               disabled={isAdvancing}
               className="h-7 px-2 text-xs text-[#2db0b0] hover:text-[#249191] hover:bg-teal-50 font-medium cursor-pointer"
-              title={`Move to ${config.next}`}
             >
               {isAdvancing ? (
                 <>
@@ -197,7 +194,7 @@ function OrderCard({ order }: { order: Order }) {
   );
 }
 
-// ─── Kanban Column ────────────────────────────────────────────────────────────
+// ─── Desktop Kanban Column (unchanged) ───────────────────────────────────────
 function KanbanColumn({
   status,
   orders,
@@ -209,18 +206,15 @@ function KanbanColumn({
 
   return (
     <div className="flex flex-col bg-slate-50 border border-slate-200 rounded-xl min-w-55 flex-1">
-      {/* ── Column Header ── */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
         <div className="flex items-center gap-2">
           <div className={`w-2 h-2 rounded-full ${config.dot}`} />
           <span className="text-sm font-semibold text-slate-700">{status}</span>
         </div>
-        <span className="min-w-5.5 h-5.5 flex items-center justify-center rounded-full bg-[#2db0b0] text-white text-xs font-bold">
+        <span className="min-w-5.5 h-5.5 flex items-center justify-center rounded-full bg-[#2db0b0] text-white text-xs font-bold px-1.5">
           {orders.length}
         </span>
       </div>
-
-      {/* ── Cards ── */}
       <div className="flex flex-col gap-3 p-3 flex-1 overflow-y-auto max-h-[calc(100vh-280px)]">
         {orders.length === 0 ? (
           <div className="flex items-center justify-center py-8">
@@ -234,25 +228,117 @@ function KanbanColumn({
   );
 }
 
+// ─── Mobile Tab Switcher ──────────────────────────────────────────────────────
+function MobileKanbanTabs({
+  grouped,
+}: {
+  grouped: Record<BoardStatus, Order[]>;
+}) {
+  const [activeTab, setActiveTab] = useState<BoardStatus>("Processing");
+  const config = STATUS_CONFIG[activeTab];
+
+  return (
+    <div>
+      {/* Tab bar */}
+      <div className="flex bg-slate-100 rounded-xl p-1 gap-1 mb-4">
+        {BOARD_STATUSES.map((status) => {
+          const isActive = activeTab === status;
+          const cfg = STATUS_CONFIG[status];
+          return (
+            <button
+              key={status}
+              onClick={() => setActiveTab(status)}
+              className={`
+                flex flex-1 items-center justify-center gap-1.5
+                py-2 px-2 rounded-lg text-xs font-semibold
+                transition-all duration-200
+                ${
+                  isActive
+                    ? "bg-white shadow-sm text-slate-800"
+                    : "text-slate-400 hover:text-slate-600"
+                }
+              `}
+            >
+              <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dot}`} />
+              <span className="truncate">{status}</span>
+              <span
+                className={`
+                  shrink-0 min-w-[18px] h-[18px] flex items-center justify-center
+                  rounded-full text-[10px] font-bold px-1
+                  ${
+                    isActive
+                      ? "bg-[#2db0b0] text-white"
+                      : "bg-slate-200 text-slate-500"
+                  }
+                `}
+              >
+                {grouped[status].length}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Active column indicator */}
+      <div className="flex items-center gap-2 mb-3 px-1">
+        <div className={`w-2.5 h-2.5 rounded-full ${config.dot}`} />
+        <span className="text-sm font-semibold text-slate-700">
+          {activeTab}
+        </span>
+        <span className="text-xs text-slate-400">
+          {grouped[activeTab].length}{" "}
+          {grouped[activeTab].length === 1 ? "order" : "orders"}
+        </span>
+      </div>
+
+      {/* Cards */}
+      <div className="flex flex-col gap-3">
+        {grouped[activeTab].length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-14 bg-slate-50 rounded-xl border border-slate-200">
+            <p className="text-sm font-medium text-slate-400">No orders</p>
+            <p className="text-xs text-slate-300 mt-1">
+              Nothing in {activeTab} yet
+            </p>
+          </div>
+        ) : (
+          grouped[activeTab].map((order) => (
+            <OrderCard key={order.id} order={order} />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main Board ───────────────────────────────────────────────────────────────
 export default function KanbanBoard() {
   const items = useAppSelector((state) => state.orders.items);
 
-  const grouped = useMemo(() => {
-    return BOARD_STATUSES.reduce<Record<BoardStatus, Order[]>>(
-      (acc, status) => {
-        acc[status] = items.filter((o) => o.status === status);
-        return acc;
-      },
-      {} as Record<BoardStatus, Order[]>,
-    );
-  }, [items]);
+  const grouped = useMemo(
+    () =>
+      BOARD_STATUSES.reduce<Record<BoardStatus, Order[]>>(
+        (acc, status) => {
+          acc[status] = items.filter((o) => o.status === status);
+          return acc;
+        },
+        {} as Record<BoardStatus, Order[]>,
+      ),
+    [items],
+  );
 
   return (
-    <div className="flex gap-4 overflow-x-auto pb-4">
-      {BOARD_STATUSES.map((status) => (
-        <KanbanColumn key={status} status={status} orders={grouped[status]} />
-      ))}
-    </div>
+    <>
+      {/* ── Mobile: tab-based column switcher ── */}
+      <div className="md:hidden">
+        <MobileKanbanTabs grouped={grouped} />
+      </div>
+
+      {/* ── Desktop: 3-column horizontal layout ── */}
+      <div className="hidden md:flex gap-4 overflow-x-auto pb-4">
+        {BOARD_STATUSES.map((status) => (
+          <KanbanColumn key={status} status={status} orders={grouped[status]} />
+        ))}
+      </div>
+    </>
   );
 }
