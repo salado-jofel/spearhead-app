@@ -14,6 +14,7 @@ import {
   Loader2,
   Plug,
   Unplug,
+  Receipt,
 } from "lucide-react";
 
 interface QuickBooksConnection {
@@ -51,12 +52,9 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
       <div className="max-w-2xl space-y-6">
         <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
           <div className="flex items-center gap-4 mb-6">
-            <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center shrink-0">
-              <img
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/QuickBooks_Logo.svg/200px-QuickBooks_Logo.svg.png"
-                alt="QuickBooks"
-                className="w-10 h-10 object-contain"
-              />
+            {/* ↓ replaced <img> with Receipt icon */}
+            <div className="w-14 h-14 bg-[#2db0b0]/10 rounded-2xl flex items-center justify-center shrink-0">
+              <Receipt className="w-7 h-7 text-[#2db0b0]" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-800">
@@ -131,15 +129,11 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
     <div className="max-w-2xl space-y-6">
       {/* Connected Status Card */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
-        {/* ↓ flex-wrap so environment badge wraps on small screens */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center shrink-0">
-              <img
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/QuickBooks_Logo.svg/200px-QuickBooks_Logo.svg.png"
-                alt="QuickBooks"
-                className="w-10 h-10 object-contain"
-              />
+            {/* ↓ replaced <img> with Receipt icon */}
+            <div className="w-14 h-14 bg-[#2db0b0]/10 rounded-2xl flex items-center justify-center shrink-0">
+              <Receipt className="w-7 h-7 text-[#2db0b0]" />
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-800">
