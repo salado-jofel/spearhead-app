@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { dbInsert, dbSelect, dbUpdate, dbDelete } from "@/utils/supabase/db";
+import { dbInsert, dbSelect, dbUpdate, dbDelete, getSupabaseClient } from "@/utils/supabase/db";
 import type {
   Facility,
   InsertFacilityPayload,
@@ -33,68 +33,66 @@ export async function getFacilities(): Promise<Facility[]> {
 }
 
 export async function addFacility(formData: FormData): Promise<Facility> {
-  try {
-    const name = formData.get("name") as string;
-    const type = formData.get("type") as string;
-    const contact = formData.get("contact") as string;
-    const phone = formData.get("phone") as string;
+  const supabase = await getSupabaseClient();
 
-    // ── Step 1: Create QB Customer FIRST ────────────────────
-    console.log("[addFacility] Creating QB customer for:", name);
+  const name = formData.get("name") as string;
+  const type = formData.get("type") as string;
+  const contact = formData.get("contact") as string;
+  const phone = formData.get("phone") as string;
+
+  // ── Step 1: Save to DB first — always ────────────────────
+  const { data: insertedRow, error: insertError } = await supabase
+    .from(FACILITY_TABLE)
+    .insert({ name, type, contact, phone, status: "Active" })
+    .select("id")
+    .single();
+
+  if (insertError || !insertedRow) {
+    console.error("[addFacility] DB insert error:", insertError?.message);
+    throw new Error("Failed to save facility to database.");
+  }
+
+  const rowId = insertedRow.id as string;
+
+  // ── Step 2: Try QB sync — non-blocking ───────────────────
+  try {
     const qbCustomerId = await createQBCustomer(name, phone, true);
 
-    if (!qbCustomerId) {
-      throw new Error(
-        "Failed to sync facility to QuickBooks. Facility not saved.",
-      );
+    if (qbCustomerId) {
+      await supabase
+        .from(FACILITY_TABLE)
+        .update({
+          qb_customer_id: qbCustomerId,
+          qb_synced_at: new Date().toISOString(),
+        })
+        .eq("id", rowId);
+    } else {
+      console.warn("[addFacility] QB sync skipped — no QB connection.");
     }
-
-    console.log("[addFacility] QB customer created:", qbCustomerId);
-
-    // ── Step 2: Insert facility WITH qb fields already set ──
-    const payload: InsertFacilityPayload & {
-      qb_customer_id: string;
-      qb_synced_at: string;
-    } = {
-      name,
-      type,
-      contact,
-      phone,
-      status: "Active",
-      qb_customer_id: qbCustomerId,
-      qb_synced_at: new Date().toISOString(),
-    };
-
-    const { error } = await dbInsert({ table: FACILITY_TABLE, payload });
-
-    if (error) {
-      console.error("[addFacility] Supabase error:", error.message);
-      throw new Error(
-        "QB customer created but failed to save facility to database",
-      );
-    }
-
-    // ── Step 3: Fetch the inserted row ───────────────────────
-    const { data, error: fetchError } = await dbSelect<Facility>({
-      table: FACILITY_TABLE,
-      columns: FACILITY_COLUMNS,
-      filter: { column: "name", value: name },
-      order: { column: "created_at", ascending: false },
-    });
-
-    if (fetchError || !data?.[0]) {
-      throw new Error("Facility created but failed to retrieve it");
-    }
-
-    revalidatePath(FACILITY_PATH);
-    return data[0];
-  } catch (err) {
-    console.error("[addFacility] Unexpected error:", err);
-    throw err instanceof Error
-      ? err
-      : new Error("An unexpected error occurred while creating the facility");
+  } catch (qbErr) {
+    // No QB connected yet or sync failed — facility is already saved, ignore
+    console.warn("[addFacility] QB auto-sync failed (non-blocking):", qbErr);
   }
+
+  // ── Step 3: Fetch full facility row ──────────────────────
+  const { data: row, error: fetchError } = await supabase
+    .from(FACILITY_TABLE)
+    .select(FACILITY_COLUMNS)
+    .eq("id", rowId)
+    .single();
+
+  if (fetchError || !row) {
+    console.error(
+      "[addFacility] Fetch after insert failed:",
+      fetchError?.message,
+    );
+    throw new Error("Facility saved but could not be retrieved.");
+  }
+
+  revalidatePath(FACILITY_PATH);
+  return row as Facility;
 }
+
 
 export async function editFacility(id: string, formData: FormData) {
   try {

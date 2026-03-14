@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { dbSelect, dbInsert, dbUpdate, dbDelete } from "@/utils/supabase/db";
+import { dbSelect, dbInsert, dbUpdate, dbDelete, getSupabaseClient } from "@/utils/supabase/db";
 import type {
   Product,
   InsertProductPayload,
@@ -29,55 +29,54 @@ export async function getAllProducts(): Promise<Product[]> {
   return data ?? [];
 }
 
-// ─── CREATE ───────────────────────────────────────────────────────────────────
 export async function addProduct(formData: FormData): Promise<Product> {
-  try {
-    const name = formData.get("name") as string;
-    const price = parseFloat(formData.get("price") as string) || 0;
+  const name = formData.get("name") as string;
+  const price = parseFloat(formData.get("price") as string) || 0;
 
-    // ── Step 1: Create QB Item FIRST ─────────────────────────
-    console.log("[addProduct] Creating QB item for:", name);
+  // ── Step 1: Save to DB first — always ────────────────────
+  const { data: product, error: insertError } = await dbInsert<
+    InsertProductPayload,
+    Product
+  >({
+    table: PRODUCT_TABLE,
+    payload: { name, price },
+    select: PRODUCT_COLUMNS,
+  });
+
+  if (insertError || !product) {
+    console.error("[addProduct] DB insert error:", insertError);
+    throw new Error("Failed to save product to database.");
+  }
+
+  // ── Step 2: Try QB sync — non-blocking ───────────────────
+  try {
     const qbItemId = await createQBItem(name, price);
 
-    if (!qbItemId) {
-      throw new Error(
-        "Failed to sync product to QuickBooks. Product not saved.",
-      );
+    if (qbItemId) {
+      const supabase = await getSupabaseClient();
+      await supabase
+        .from(PRODUCT_TABLE)
+        .update({
+          qb_item_id: qbItemId,
+          qb_synced_at: new Date().toISOString(),
+        })
+        .eq("id", product.id);
+
+      // Reflect QB fields on the returned object
+      product.qb_item_id = qbItemId;
+      product.qb_synced_at = new Date().toISOString();
+    } else {
+      console.warn("[addProduct] QB sync skipped — no QB connection.");
     }
-
-    console.log("[addProduct] QB item created:", qbItemId);
-
-    // ── Step 2: Insert product WITH qb fields already set ────
-    const payload: InsertProductPayload & {
-      qb_item_id: string;
-      qb_synced_at: string;
-    } = {
-      name,
-      price,
-      qb_item_id: qbItemId,
-      qb_synced_at: new Date().toISOString(),
-    };
-
-    const { data, error } = await dbInsert<typeof payload, Product>({
-      table: PRODUCT_TABLE,
-      payload,
-      select: PRODUCT_COLUMNS,
-    });
-
-    if (error || !data) {
-      console.error("[addProduct] Supabase error:", JSON.stringify(error));
-      throw new Error("QB item created but failed to save product to database");
-    }
-
-    revalidatePath(PRODUCTS_PATH);
-    return data;
-  } catch (err) {
-    console.error("[addProduct] Unexpected error:", err);
-    throw err instanceof Error
-      ? err
-      : new Error("An unexpected error occurred while creating the product");
+  } catch (qbErr) {
+    // No QB connected yet — product is already saved, ignore
+    console.warn("[addProduct] QB auto-sync failed (non-blocking):", qbErr);
   }
+
+  revalidatePath(PRODUCTS_PATH);
+  return product;
 }
+
 
 // ─── UPDATE ───────────────────────────────────────────────────────────────────
 export async function editProduct(productId: string, formData: FormData) {

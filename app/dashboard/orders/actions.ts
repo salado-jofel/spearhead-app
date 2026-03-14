@@ -103,95 +103,84 @@ export async function getAllOrders(): Promise<Order[]> {
 }
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
-export async function addOrder(formData: FormData) {
-  try {
-    const { user, supabase } = await getCurrentUser();
+export async function addOrder(formData: FormData): Promise<Order> {
+  const { user, supabase } = await getCurrentUser();
 
-    const order_id = formData.get("order_id") as string;
-    const facility_id = formData.get("facility_id") as string;
-    const product_id = formData.get("product_id") as string;
-    const amount = parseFloat(formData.get("amount") as string) || 0;
+  const order_id    = formData.get("order_id")    as string;
+  const facility_id = formData.get("facility_id") as string;
+  const product_id  = formData.get("product_id")  as string;
+  const amount      = parseFloat(formData.get("amount") as string) || 0;
 
-    // ── Step 1: Verify facility is QB-synced ─────────────────
-    const { data: facility } = await supabase
-      .from("facilities")
-      .select("name, qb_customer_id")
-      .eq("id", facility_id)
-      .single();
-
-    if (!facility?.qb_customer_id) {
-      throw new Error(
-        "Selected facility is not synced to QuickBooks. Please sync it first.",
-      );
-    }
-
-    // ── Step 2: Verify product is QB-synced ──────────────────
-    const { data: product } = await supabase
-      .from("products")
-      .select("name, qb_item_id")
-      .eq("id", product_id)
-      .single();
-
-    if (!product?.qb_item_id) {
-      throw new Error(
-        "Selected product is not synced to QuickBooks. Please sync it first.",
-      );
-    }
-
-    // ── Step 3: Create QB Invoice FIRST ─────────────────────
-    console.log("[addOrder] Creating QB invoice for:", order_id);
-
-    const qbInvoiceId = await createQBInvoiceFromData({
-      orderDocNumber: order_id,
-      qbCustomerId: facility.qb_customer_id,
-      facilityName: facility.name,
-      qbItemId: product.qb_item_id,
-      productName: product.name,
-      amount,
-    });
-
-    if (!qbInvoiceId) {
-      throw new Error("Failed to create QuickBooks invoice. Order not saved.");
-    }
-
-    console.log("[addOrder] QB invoice created:", qbInvoiceId);
-
-    // ── Step 4: Insert order WITH qb fields already set ─────
-    const payload: InsertOrderPayload & {
-      qb_invoice_id: string;
-      qb_invoice_status: string;
-      qb_synced_at: string;
-    } = {
+  // ── Step 1: Save to DB first — always ────────────────────
+  const { data: insertedRow, error: insertError } = await supabase
+    .from(ORDER_TABLE)
+    .insert({
       order_id,
       facility_id,
       product_id,
       amount,
       status: "Processing",
       created_by: user.id,
-      qb_invoice_id: qbInvoiceId,
-      qb_invoice_status: "draft",
-      qb_synced_at: new Date().toISOString(),
-    };
+    })
+    .select("id")
+    .single();
 
-    const { error } = await dbInsert<typeof payload>({
-      table: ORDER_TABLE,
-      payload,
-    });
-
-    if (error) {
-      console.error("[addOrder] Supabase error:", error.message);
-      throw new Error(
-        "QB invoice created but failed to save order to database",
-      );
-    }
-
-    revalidatePath(ORDERS_PATH);
-  } catch (err) {
-    console.error("[addOrder] Unexpected error:", err);
-    throw err instanceof Error
-      ? err
-      : new Error("An unexpected error occurred while creating the order");
+  if (insertError || !insertedRow) {
+    console.error("[addOrder] DB insert error:", insertError?.message);
+    throw new Error("Failed to save order to database.");
   }
+
+  const rowId = insertedRow.id as string;
+
+  // ── Step 2: Try QB invoice — non-blocking ────────────────
+  try {
+    const [{ data: facility }, { data: product }] = await Promise.all([
+      supabase.from("facilities").select("name, qb_customer_id").eq("id", facility_id).single(),
+      supabase.from("products").select("name, qb_item_id").eq("id", product_id).single(),
+    ]);
+
+    if (facility?.qb_customer_id && product?.qb_item_id) {
+      const qbInvoiceId = await createQBInvoiceFromData({
+        orderDocNumber: order_id,
+        qbCustomerId:   facility.qb_customer_id,
+        facilityName:   facility.name,
+        qbItemId:       product.qb_item_id,
+        productName:    product.name,
+        amount,
+      });
+
+      if (qbInvoiceId) {
+        await supabase
+          .from(ORDER_TABLE)
+          .update({
+            qb_invoice_id:     qbInvoiceId,
+            qb_invoice_status: "draft",
+            qb_synced_at:      new Date().toISOString(),
+          })
+          .eq("id", rowId);
+      }
+    } else {
+      console.warn("[addOrder] QB sync skipped — facility or product not yet synced to QB.");
+    }
+  } catch (qbErr) {
+    // No QB connected yet or sync failed — order already saved, ignore
+    console.warn("[addOrder] QB auto-sync failed (non-blocking):", qbErr);
+  }
+
+  // ── Step 3: Fetch full order with joins ───────────────────
+  const { data: row, error: fetchError } = await supabase
+    .from(ORDER_TABLE)
+    .select(ORDER_COLUMNS)
+    .eq("id", rowId)
+    .single();
+
+  if (fetchError || !row) {
+    console.error("[addOrder] Fetch after insert failed:", fetchError?.message);
+    throw new Error("Order saved but could not be retrieved.");
+  }
+
+  revalidatePath(ORDERS_PATH);
+  return flattenOrder(row as unknown as RawOrder);
 }
 
 // ─── UPDATE ───────────────────────────────────────────────────────────────────
