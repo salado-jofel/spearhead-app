@@ -10,6 +10,7 @@ import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { removeFacilityFromStore } from "../(redux)/facilities-slice";
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
+import SyncToQuickBooks from "./SnycToQuickBooks";
 
 export default function FacilitiesTable() {
   const router = useRouter();
@@ -43,14 +44,12 @@ export default function FacilitiesTable() {
     router.push(`/dashboard/facilities/${id}`);
   }
 
-  // ── Step 1: open modal, store which ID to delete ─────────
   function handleDelete(e: React.MouseEvent, id: string) {
     e.stopPropagation();
     setPendingDeleteId(id);
     setConfirmOpen(true);
   }
 
-  // ── Step 2: user confirmed — actually delete ─────────────
   async function handleConfirmDelete() {
     if (!pendingDeleteId) return;
     setIsDeleting(true);
@@ -66,7 +65,6 @@ export default function FacilitiesTable() {
 
   return (
     <>
-      {/* ── Confirm Modal ─────────────────────────────────── */}
       <ConfirmModal
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
@@ -78,10 +76,8 @@ export default function FacilitiesTable() {
       />
 
       <div className="bg-white border border-slate-200 rounded-xl shadow-2xl flex flex-col h-[calc(100vh-267px)]">
-        {/* ── Scrollable Table Body ── */}
         <div className="overflow-auto flex-1">
           <table className="w-full text-sm text-left">
-            {/* ── Sticky Header ── */}
             <thead className="sticky top-0 z-10">
               <tr className="bg-[#2db0b0] text-white">
                 <th className="px-4 py-3 font-medium">Name</th>
@@ -89,6 +85,7 @@ export default function FacilitiesTable() {
                 <th className="px-4 py-3 font-medium">Contact</th>
                 <th className="px-4 py-3 font-medium">Phone</th>
                 <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium">QuickBooks</th>
                 <th className="px-4 py-3 font-medium">Actions</th>
               </tr>
             </thead>
@@ -111,6 +108,22 @@ export default function FacilitiesTable() {
                   <td className="px-4 py-3">
                     <StatusBadge status={facility.status} />
                   </td>
+
+                  {/* ── QuickBooks Sync Column ── */}
+                  <td
+                    className="px-4 py-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {facility.id && (
+                      <SyncToQuickBooks
+                        facilityId={facility.id}
+                        facilityName={facility.name ?? ""}
+                        qbCustomerId={facility.qb_customer_id}
+                        qbSyncedAt={facility.qb_synced_at}
+                      />
+                    )}
+                  </td>
+
                   <td className="px-4 py-3">
                     {facility.id && (
                       <button
@@ -130,7 +143,6 @@ export default function FacilitiesTable() {
             </tbody>
           </table>
 
-          {/* ── Empty State ── */}
           {filtered.length === 0 && (
             <div className="flex flex-col items-center justify-center py-20">
               <Building2 className="w-12 h-12 mb-3 text-slate-200 stroke-1" />
@@ -141,7 +153,6 @@ export default function FacilitiesTable() {
           )}
         </div>
 
-        {/* ── Footer: Row Count ── */}
         <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/60 shrink-0">
           <p className="text-xs text-slate-400">
             Showing{" "}

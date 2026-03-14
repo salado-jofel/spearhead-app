@@ -29,6 +29,7 @@ import {
   Plus,
   DollarSign,
 } from "lucide-react";
+import SyncToQuickBooks from "./SyncToQuickBooks";
 
 // ─── Add Product Modal ────────────────────────────────────────────────────────
 function AddProductModal() {
@@ -73,7 +74,6 @@ function AddProductModal() {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          {/* Product Name */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <Package className="w-4 h-4 text-[#2db0b0]" />
@@ -87,7 +87,6 @@ function AddProductModal() {
             />
           </div>
 
-          {/* Price */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
               <DollarSign className="w-4 h-4 text-[#2db0b0]" />
@@ -104,7 +103,6 @@ function AddProductModal() {
             />
           </div>
 
-          {/* Actions */}
           <div className="flex items-center justify-end gap-2 pt-2">
             <Button
               type="button"
@@ -253,6 +251,18 @@ function ProductRow({ product }: { product: Product }) {
             : "—"}
         </td>
 
+        {/* QuickBooks Sync */}
+        <td className="px-4 py-3">
+          {product.id && (
+            <SyncToQuickBooks
+              productId={product.id}
+              productName={product.name}
+              qbItemId={product.qb_item_id}
+              qbSyncedAt={product.qb_synced_at}
+            />
+          )}
+        </td>
+
         {/* Actions */}
         <td className="px-4 py-3">
           <div className="flex items-center gap-1">
@@ -346,6 +356,7 @@ export default function ProductsTable() {
               <th className="px-4 py-3 font-medium">Name</th>
               <th className="px-4 py-3 font-medium">Price</th>
               <th className="px-4 py-3 font-medium">Date Added</th>
+              <th className="px-4 py-3 font-medium">QuickBooks</th>
               <th className="px-4 py-3 font-medium">Actions</th>
             </tr>
           </thead>
