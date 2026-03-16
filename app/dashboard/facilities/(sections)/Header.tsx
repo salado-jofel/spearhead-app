@@ -11,9 +11,6 @@ export default function Header() {
           Manage your healthcare facilities
         </p>
       </div>
-      <div className="shrink-0">
-        <AddFacilityModal />
-      </div>
     </div>
   );
 }

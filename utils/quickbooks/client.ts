@@ -1,30 +1,21 @@
-"use server";
+// utils/quickbooks/client.ts  ← UPDATE (full file replacement)
+// NO "use server" — this is an internal server-side utility module,
+// imported only by other "use server" action files.
 
 import { createClient } from "@/utils/supabase/server";
+import { QB_CONFIG } from "@/utils/quickbooks/config";
 
-const QB_TOKEN_URL =
-  "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
-const QB_ENVIRONMENT = process.env.QB_ENVIRONMENT || "sandbox";
-const QB_CLIENT_ID = process.env.QB_CLIENT_ID!;
-const QB_CLIENT_SECRET = process.env.QB_CLIENT_SECRET!;
+// ── Get valid access token (refresh if expired) ───────────────────────────────
 
-const QB_BASE_URL =
-  QB_ENVIRONMENT === "sandbox"
-    ? "https://sandbox-quickbooks.api.intuit.com"
-    : "https://quickbooks.api.intuit.com";
-
-// ─── Get valid access token (refresh if expired) ──────────────────────────────
 export async function getValidAccessToken(): Promise<{
   accessToken: string;
   realmId: string;
 } | null> {
   try {
     const supabase = await createClient();
-
     const {
       data: { user },
     } = await supabase.auth.getUser();
-
     if (!user) return null;
 
     const { data: connection, error } = await supabase
@@ -38,7 +29,7 @@ export async function getValidAccessToken(): Promise<{
     const now = new Date();
     const accessExpiry = new Date(connection.access_token_expires_at);
 
-    // Token still valid
+    // ── Fast path: token still valid ─────────────────────────────────────────
     if (accessExpiry > now) {
       return {
         accessToken: connection.access_token,
@@ -46,12 +37,23 @@ export async function getValidAccessToken(): Promise<{
       };
     }
 
-    // Token expired — refresh it
-    console.log("[QB Client] Access token expired, refreshing...");
+    // ── Token expired: re-read first to handle concurrent refresh ────────────
+    // Another in-flight request may have already refreshed the token.
+    // Re-fetching avoids double-refresh with an already-rotated refresh_token.
+    const { data: fresh } = await supabase
+      .from("quickbooks_connections")
+      .select("access_token, access_token_expires_at")
+      .eq("user_id", user.id)
+      .single();
 
-    const credentials = btoa(`${QB_CLIENT_ID}:${QB_CLIENT_SECRET}`);
+    if (fresh && new Date(fresh.access_token_expires_at) > now) {
+      return { accessToken: fresh.access_token, realmId: connection.realm_id };
+    }
 
-    const response = await fetch(QB_TOKEN_URL, {
+    // ── Refresh ───────────────────────────────────────────────────────────────
+    const credentials = btoa(`${QB_CONFIG.clientId}:${QB_CONFIG.clientSecret}`);
+
+    const response = await fetch(QB_CONFIG.tokenUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -70,14 +72,13 @@ export async function getValidAccessToken(): Promise<{
     }
 
     const tokens = await response.json();
-
     const newAccessExpiry = new Date(now.getTime() + tokens.expires_in * 1000);
     const newRefreshExpiry = new Date(
       now.getTime() + tokens.x_refresh_token_expires_in * 1000,
     );
 
-    // Save refreshed tokens
-    await supabase
+    // ── Persist refreshed token — check result ────────────────────────────────
+    const { error: updateErr } = await supabase
       .from("quickbooks_connections")
       .update({
         access_token: tokens.access_token,
@@ -88,7 +89,15 @@ export async function getValidAccessToken(): Promise<{
       })
       .eq("user_id", user.id);
 
-    console.log("[QB Client] Token refreshed successfully");
+    if (updateErr) {
+      // Token refreshed but not saved — if we return it now the next request
+      // will try to refresh again with the already-rotated refresh_token → hard fail.
+      console.error(
+        "[QB Client] Failed to persist refreshed token:",
+        updateErr.message,
+      );
+      return null;
+    }
 
     return {
       accessToken: tokens.access_token,
@@ -100,22 +109,20 @@ export async function getValidAccessToken(): Promise<{
   }
 }
 
-// ─── Make authenticated QB API request ───────────────────────────────────────
+// ── Soft QB request — returns null on failure ─────────────────────────────────
+
 export async function qbRequest<T>(
   method: "GET" | "POST" | "PUT" | "DELETE",
   path: string,
   body?: object,
 ): Promise<T | null> {
   const auth = await getValidAccessToken();
-
   if (!auth) {
     console.error("[QB Client] No valid access token");
     return null;
   }
 
-  const url = `${QB_BASE_URL}/v3/company/${auth.realmId}${path}?minorversion=65`;
-
-  console.log(`[QB Client] ${method} ${url}`);
+  const url = `${QB_CONFIG.companyUrl}/v3/company/${auth.realmId}${path}?minorversion=65`;
 
   const response = await fetch(url, {
     method,
@@ -127,15 +134,29 @@ export async function qbRequest<T>(
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
 
-  const responseText = await response.text();
-
   if (!response.ok) {
+    // Truncate to avoid logging full sensitive QB error payloads
+    const snippet = (await response.text()).slice(0, 300);
     console.error(
-      `[QB Client] Request failed: ${response.status}`,
-      responseText,
+      `[QB Client] ${method} ${path} → ${response.status}`,
+      snippet,
     );
     return null;
   }
 
-  return JSON.parse(responseText) as T;
+  return response.json() as Promise<T>;
+}
+
+// ── Strict QB request — THROWS on failure ────────────────────────────────────
+
+export async function qbRequestOrThrow<T>(
+  method: "GET" | "POST" | "PUT" | "DELETE",
+  path: string,
+  body?: object,
+): Promise<T> {
+  const result = await qbRequest<T>(method, path, body);
+  if (result === null) {
+    throw new Error(`QB request failed: ${method} ${path}`);
+  }
+  return result;
 }

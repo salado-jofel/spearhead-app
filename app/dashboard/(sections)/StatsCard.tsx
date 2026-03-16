@@ -1,6 +1,5 @@
 "use client";
 
-import { useAppSelector } from "@/store/hooks";
 import { Building2, ShoppingCart, DollarSign, RefreshCw } from "lucide-react";
 
 function StatCard({
@@ -25,17 +24,19 @@ function StatCard({
   );
 }
 
-export default function StatsCards() {
-  const facilities = useAppSelector((state) => state.facilities.items);
-  const orders = useAppSelector((state) => state.orders.items);
+interface Props {
+  totalFacilities: number;
+  totalOrders: number;
+  totalRevenue: number;
+  activeOrders: number;
+}
 
-  const totalFacilities = facilities.length;
-  const totalOrders = orders.length;
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.amount ?? 0), 0);
-  const activeOrders = orders.filter(
-    (o) => o.status !== "Delivered" && o.status !== "Draft",
-  ).length;
-
+export default function StatsCards({
+  totalFacilities,
+  totalOrders,
+  totalRevenue,
+  activeOrders,
+}: Props) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard

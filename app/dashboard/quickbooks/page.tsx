@@ -1,13 +1,13 @@
+// app/dashboard/quickbooks/page.tsx  ← UPDATE
+
 export const dynamic = "force-dynamic";
 
 import QuickBooksClient from "./(sections)/QuickBooksClient";
-import { getQuickBooksAuthUrl, getQuickBooksConnection } from "./actions";
+import { getQuickBooksConnection, redirectToQuickBooks } from "./actions";
 
 export default async function QuickBooksPage() {
-  const [authUrl, connection] = await Promise.all([
-    getQuickBooksAuthUrl(),
-    getQuickBooksConnection(),
-  ]);
+  // ✅ read-only — safe during render
+  const connection = await getQuickBooksConnection();
 
   return (
     <div className="p-4 md:p-8 w-full mx-auto space-y-6 select-none h-full overflow-y-auto">
@@ -21,7 +21,11 @@ export default async function QuickBooksPage() {
         </p>
       </div>
 
-      <QuickBooksClient authUrl={authUrl} connection={connection} />
+      {/* ✅ pass the Server Action down instead of a pre-built URL */}
+      <QuickBooksClient
+        connectAction={redirectToQuickBooks}
+        connection={connection}
+      />
     </div>
   );
 }

@@ -29,11 +29,11 @@ interface QuickBooksConnection {
 }
 
 interface Props {
-  authUrl: string;
+  connectAction: () => Promise<never>;
   connection: QuickBooksConnection | null;
 }
 
-export default function QuickBooksClient({ authUrl, connection }: Props) {
+export default function QuickBooksClient({ connectAction, connection }: Props) {
   const [isDisconnecting, setIsDisconnecting] = useState(false);
 
   async function handleDisconnect() {
@@ -52,7 +52,6 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
       <div className="max-w-2xl space-y-6">
         <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
           <div className="flex items-center gap-4 mb-6">
-            {/* ↓ replaced <img> with Receipt icon */}
             <div className="w-14 h-14 bg-[#2db0b0]/10 rounded-2xl flex items-center justify-center shrink-0">
               <Receipt className="w-7 h-7 text-[#2db0b0]" />
             </div>
@@ -83,14 +82,16 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
             ))}
           </div>
 
-          <a
-            href={authUrl}
-            className="flex items-center justify-center gap-2 w-full h-12 bg-[#2CA01C] hover:bg-[#248518] text-white font-semibold rounded-xl transition-colors"
-          >
-            <Plug className="w-4 h-4" />
-            Connect QuickBooks
-            <ExternalLink className="w-3.5 h-3.5 opacity-70" />
-          </a>
+          <form action={connectAction}>
+            <button
+              type="submit"
+              className="flex items-center justify-center gap-2 w-full h-12 bg-[#2CA01C] hover:bg-[#248518] text-white font-semibold rounded-xl transition-colors"
+            >
+              <Plug className="w-4 h-4" />
+              Connect QuickBooks
+              <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+            </button>
+          </form>
         </div>
 
         <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 sm:p-5">
@@ -131,7 +132,6 @@ export default function QuickBooksClient({ authUrl, connection }: Props) {
       <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
           <div className="flex items-center gap-4">
-            {/* ↓ replaced <img> with Receipt icon */}
             <div className="w-14 h-14 bg-[#2db0b0]/10 rounded-2xl flex items-center justify-center shrink-0">
               <Receipt className="w-7 h-7 text-[#2db0b0]" />
             </div>

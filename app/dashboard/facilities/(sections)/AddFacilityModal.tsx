@@ -34,6 +34,7 @@ const FACILITY_TYPES: string[] = [
   "Birthing Center",
 ];
 
+
 function FieldWrapper({
   label,
   children,
@@ -80,14 +81,12 @@ export function AddFacilityModal() {
       }}
     >
       <DialogTrigger asChild>
-        {/* ✅ Full width on mobile, auto on sm+ */}
         <Button className="bg-[#2db0b0] hover:bg-[#249191] text-white shadow-sm w-full sm:w-auto">
           <Plus className="w-4 h-4 mr-2" />
           Add Facility
         </Button>
       </DialogTrigger>
 
-      {/* ✅ Respects screen edge on mobile, scrollable on small screens */}
       <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md p-0 gap-0 overflow-hidden rounded-2xl max-h-[90dvh] flex flex-col">
         {/* Modal Header */}
         <div className="bg-[#2db0b0] px-6 py-5 shrink-0">
@@ -106,7 +105,7 @@ export function AddFacilityModal() {
           </div>
         </div>
 
-        {/* Modal Body — scrollable if screen is short */}
+        {/* Modal Body */}
         <form
           onSubmit={async (e) => {
             e.preventDefault();

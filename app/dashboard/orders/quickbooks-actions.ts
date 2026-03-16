@@ -1,7 +1,12 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { qbRequest, getValidAccessToken } from "@/utils/quickbooks/client";
+import {
+  qbRequest,
+  qbRequestOrThrow,
+  getValidAccessToken,
+} from "@/utils/quickbooks/client";
+import { requireUser } from "@/utils/auth-guard";
 
 interface QBInvoiceLine {
   Amount: number;
@@ -23,11 +28,11 @@ interface QBInvoice {
 }
 
 interface QBInvoiceResponse {
-  Invoice: QBInvoice;
+  Invoice: QBInvoice & { Id: string; SyncToken: string };
 }
 
-// ─── Pure QB helper — creates invoice from raw data, returns ID ───────────────
-// No Supabase interaction. Used by addOrder before inserting.
+// ── Create invoice — throws on failure ───────────────────────────────────────
+
 export async function createQBInvoiceFromData(params: {
   orderDocNumber: string;
   qbCustomerId: string;
@@ -35,44 +40,39 @@ export async function createQBInvoiceFromData(params: {
   qbItemId: string;
   productName: string;
   amount: number;
-}): Promise<string | null> {
-  try {
-    const payload: QBInvoice = {
-      DocNumber: params.orderDocNumber,
-      CustomerRef: {
-        value: params.qbCustomerId,
-        name: params.facilityName,
-      },
-      Line: [
-        {
-          Amount: params.amount,
-          DetailType: "SalesItemLineDetail",
-          SalesItemLineDetail: {
-            ItemRef: {
-              value: params.qbItemId,
-              name: params.productName,
-            },
-            UnitPrice: params.amount,
-            Qty: 1,
-          },
+}): Promise<string> {
+  const payload: QBInvoice = {
+    DocNumber: params.orderDocNumber,
+    CustomerRef: { value: params.qbCustomerId, name: params.facilityName },
+    Line: [
+      {
+        Amount: params.amount,
+        DetailType: "SalesItemLineDetail",
+        SalesItemLineDetail: {
+          ItemRef: { value: params.qbItemId, name: params.productName },
+          UnitPrice: params.amount,
+          Qty: 1,
         },
-      ],
-      PrivateNote: `Order ${params.orderDocNumber} from Spearhead Medical Dashboard`,
-    };
+      },
+    ],
+    PrivateNote: `Order ${params.orderDocNumber} from Spearhead Medical Dashboard`,
+  };
 
-    const created = await qbRequest<QBInvoiceResponse>(
-      "POST",
-      "/invoice",
-      payload,
-    );
-    return created?.Invoice?.Id ?? null;
-  } catch (err) {
-    console.error("[createQBInvoiceFromData] Error:", err);
-    return null;
+  const created = await qbRequestOrThrow<QBInvoiceResponse>(
+    "POST",
+    "/invoice",
+    payload,
+  );
+
+  if (!created?.Invoice?.Id) {
+    throw new Error("[createQBInvoiceFromData] QB returned no Invoice ID.");
   }
+
+  return created.Invoice.Id;
 }
 
-// ─── Create QB Invoice for an existing order (used for bulk re-sync) ──────────
+// ── Sync single order invoice ─────────────────────────────────────────────────
+
 export async function createQuickBooksInvoice(
   orderId: string,
 ): Promise<{ success: boolean; message: string }> {
@@ -85,7 +85,7 @@ export async function createQuickBooksInvoice(
         `
         *,
         facilities:facility_id (id, name, qb_customer_id),
-        products:product_id  (id, name, qb_item_id)
+        products:product_id    (id, name, qb_item_id)
       `,
       )
       .eq("id", orderId)
@@ -94,16 +94,12 @@ export async function createQuickBooksInvoice(
     if (orderError || !order) {
       return { success: false, message: "Order not found" };
     }
-
     if (!order.facilities?.qb_customer_id) {
       return { success: false, message: "Facility not synced to QuickBooks" };
     }
-
     if (!order.products?.qb_item_id) {
       return { success: false, message: "Product not synced to QuickBooks" };
     }
-
-    console.log("[QB Invoice] Creating invoice for order:", order.order_id);
 
     const qbInvoiceId = await createQBInvoiceFromData({
       orderDocNumber: order.order_id,
@@ -113,12 +109,6 @@ export async function createQuickBooksInvoice(
       productName: order.products.name,
       amount: parseFloat(order.amount) || 0,
     });
-
-    if (!qbInvoiceId) {
-      return { success: false, message: "Failed to create QB invoice" };
-    }
-
-    console.log("[QB Invoice] Created invoice ID:", qbInvoiceId);
 
     const { error: updateError } = await supabase
       .from("orders")
@@ -136,8 +126,6 @@ export async function createQuickBooksInvoice(
       };
     }
 
-    // NOTE: revalidatePath removed — caller (actions.ts) handles revalidation
-
     return {
       success: true,
       message: `Invoice created in QuickBooks (ID: ${qbInvoiceId})`,
@@ -151,7 +139,8 @@ export async function createQuickBooksInvoice(
   }
 }
 
-// ─── Get QB Invoice status ────────────────────────────────────────────────────
+// ── Get QB Invoice status ─────────────────────────────────────────────────────
+
 export async function getQuickBooksInvoiceStatus(
   qbInvoiceId: string,
 ): Promise<string | null> {
@@ -166,6 +155,7 @@ export async function getQuickBooksInvoiceStatus(
       Balance?: number;
       TotalAmt?: number;
     };
+
     const balance = invoice.Balance ?? 0;
     const total = invoice.TotalAmt ?? 0;
 
@@ -178,26 +168,17 @@ export async function getQuickBooksInvoiceStatus(
   }
 }
 
-// ─── Void QB Invoice ──────────────────────────────────────────────────────────
+// ── Void QB Invoice ───────────────────────────────────────────────────────────
+// Accepts raw qbInvoiceId directly.
+// DB status update (qb_invoice_status) is the caller's responsibility.
+
 export async function voidQuickBooksInvoice(
-  orderId: string,
+  qbInvoiceId: string,
 ): Promise<{ success: boolean; message: string }> {
   try {
-    const supabase = await createClient();
-
-    const { data: order, error } = await supabase
-      .from("orders")
-      .select("qb_invoice_id")
-      .eq("id", orderId)
-      .single();
-
-    if (error || !order?.qb_invoice_id) {
-      return { success: false, message: "No QB invoice found for this order" };
-    }
-
     const existing = await qbRequest<QBInvoiceResponse>(
       "GET",
-      `/invoice/${order.qb_invoice_id}`,
+      `/invoice/${qbInvoiceId}`,
     );
     if (!existing?.Invoice?.SyncToken) {
       return { success: false, message: "Failed to fetch QB invoice" };
@@ -206,11 +187,10 @@ export async function voidQuickBooksInvoice(
     const auth = await getValidAccessToken();
     if (!auth) return { success: false, message: "No QB connection" };
 
-    const QB_ENVIRONMENT = process.env.QB_ENVIRONMENT || "sandbox";
     const QB_BASE_URL =
-      QB_ENVIRONMENT === "sandbox"
-        ? "https://sandbox-quickbooks.api.intuit.com"
-        : "https://quickbooks.api.intuit.com";
+      process.env.QB_ENVIRONMENT === "production"
+        ? "https://quickbooks.api.intuit.com"
+        : "https://sandbox-quickbooks.api.intuit.com";
 
     const response = await fetch(
       `${QB_BASE_URL}/v3/company/${auth.realmId}/invoice?operation=void&minorversion=65`,
@@ -222,7 +202,7 @@ export async function voidQuickBooksInvoice(
           Accept: "application/json",
         },
         body: JSON.stringify({
-          Id: order.qb_invoice_id,
+          Id: qbInvoiceId,
           SyncToken: existing.Invoice.SyncToken,
         }),
       },
@@ -232,32 +212,30 @@ export async function voidQuickBooksInvoice(
       return { success: false, message: "Failed to void QB invoice" };
     }
 
-    await supabase
-      .from("orders")
-      .update({ qb_invoice_status: "void" })
-      .eq("id", orderId);
-
     return { success: true, message: "Invoice voided in QuickBooks" };
   } catch (err) {
     console.error("[QB Invoice] voidInvoice error:", err);
     return {
       success: false,
-      message: err instanceof Error ? err.message : "Unexpected error occurred",
+      message: err instanceof Error ? err.message : "Unexpected error",
     };
   }
 }
 
-// ─── Sync ALL unsynced orders to QB ──────────────────────────────────────────
+// ── Sync ALL unsynced orders ──────────────────────────────────────────────────
+
 export async function syncAllOrdersToQuickBooks(): Promise<{
   success: number;
   failed: number;
   messages: string[];
 }> {
+  await requireUser();
+
   const supabase = await createClient();
 
   const { data: orders, error } = await supabase
     .from("orders")
-    .select("id, order_id, qb_invoice_id")
+    .select("id, order_id")
     .is("qb_invoice_id", null);
 
   if (error || !orders) {
@@ -268,18 +246,27 @@ export async function syncAllOrdersToQuickBooks(): Promise<{
     };
   }
 
+  const settled = await Promise.allSettled(
+    orders.map((o) =>
+      createQuickBooksInvoice(o.id).then((r) => ({
+        order_id: o.order_id,
+        result: r,
+      })),
+    ),
+  );
+
   let success = 0;
   let failed = 0;
   const messages: string[] = [];
 
-  for (const order of orders) {
-    const result = await createQuickBooksInvoice(order.id);
-    if (result.success) {
-      success++;
-      messages.push(`${order.order_id} synced`);
+  for (const outcome of settled) {
+    if (outcome.status === "fulfilled") {
+      const { order_id, result } = outcome.value;
+      result.success ? success++ : failed++;
+      messages.push(`${order_id}: ${result.message}`);
     } else {
       failed++;
-      messages.push(`${order.order_id}: ${result.message}`);
+      messages.push(`Unknown: ${String(outcome.reason)}`);
     }
   }
 

@@ -6,24 +6,31 @@ import { setFacilities } from "@/app/dashboard/facilities/(redux)/facilities-sli
 import { setOrders } from "@/app/dashboard/orders/(redux)/orders-slice";
 import type { Facility } from "@/app/(interfaces)/facility";
 import type { Order } from "@/app/(interfaces)/order";
+import { UserData } from "../actions";
+import { setUser } from "../(redux)/dashboard-slice";
 
 interface DashboardProvidersProps {
   children: ReactNode;
   facilities: Facility[];
   orders: Order[];
+  userData: UserData | null;
 }
 
 export default function Providers({
   children,
   facilities,
   orders,
+  userData,
 }: DashboardProvidersProps) {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
     dispatch(setFacilities(facilities));
     dispatch(setOrders(orders));
-  }, [dispatch, facilities, orders]);
+    if (userData) {
+      dispatch(setUser(userData));
+    }
+  }, [dispatch, facilities, orders, userData]);
 
   return <>{children}</>;
 }

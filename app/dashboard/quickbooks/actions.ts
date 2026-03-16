@@ -1,156 +1,187 @@
+// app/dashboard/quickbooks/actions.ts  ← FULL FILE
+
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import { createQuickBooksInvoice } from "../orders/quickbooks-actions";
+import { QB_CONFIG } from "@/utils/quickbooks/config";
 
-const QB_CLIENT_ID = process.env.QB_CLIENT_ID!;
-const QB_CLIENT_SECRET = process.env.QB_CLIENT_SECRET!;
-const QB_REDIRECT_URI = process.env.QB_REDIRECT_URI!;
-const QB_ENVIRONMENT = process.env.QB_ENVIRONMENT || "sandbox";
+// ── Redirect to QuickBooks OAuth ──────────────────────────────────────────────
 
-const QB_AUTH_URL = "https://appcenter.intuit.com/connect/oauth2";
-const QB_TOKEN_URL =
-  "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
-const QB_COMPANY_URL =
-  QB_ENVIRONMENT === "sandbox"
-    ? "https://sandbox-quickbooks.api.intuit.com"
-    : "https://quickbooks.api.intuit.com";
+export async function redirectToQuickBooks(): Promise<never> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+  if (error || !user) redirect("/sign-in");
 
-// ─── Generate OAuth URL ───────────────────────────────────────────────────────
-export async function getQuickBooksAuthUrl(): Promise<string> {
-  const scopes = ["com.intuit.quickbooks.accounting"].join(" ");
+  const state = crypto.randomUUID();
 
-  const params = new URLSearchParams({
-    client_id: QB_CLIENT_ID,
-    redirect_uri: QB_REDIRECT_URI,
-    response_type: "code",
-    scope: scopes,
-    state: crypto.randomUUID(),
+  // Store state server-side in user metadata — survives cross-site redirects
+  await supabase.auth.updateUser({
+    data: {
+      qb_oauth_state: state,
+      qb_oauth_state_exp: Date.now() + 10 * 60 * 1000,
+    },
   });
 
-  return `${QB_AUTH_URL}?${params.toString()}`;
+  const params = new URLSearchParams({
+    client_id: QB_CONFIG.clientId,
+    redirect_uri: QB_CONFIG.redirectUri,
+    response_type: "code",
+    scope: "com.intuit.quickbooks.accounting",
+    state,
+  });
+
+  redirect(`${QB_CONFIG.authUrl}?${params.toString()}`);
 }
 
-// ─── Exchange Code for Tokens ─────────────────────────────────────────────────
+// ── Exchange Code for Tokens ──────────────────────────────────────────────────
+
 export async function exchangeCodeForTokens(
   code: string,
   realmId: string,
+  returnedState: string,
 ): Promise<void> {
   try {
     const supabase = await createClient();
-
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
-
     if (authError || !user) throw new Error("User not authenticated");
 
-    // Debug logs
-    console.log("[QB] CLIENT_ID exists:", !!QB_CLIENT_ID);
-    console.log("[QB] CLIENT_SECRET exists:", !!QB_CLIENT_SECRET);
-    console.log("[QB] REDIRECT_URI:", QB_REDIRECT_URI);
-    console.log("[QB] CODE length:", code?.length);
-    console.log("[QB] REALM_ID:", realmId);
+    // ── Verify OAuth state (CSRF protection) ─────────────────────────────────
+    const storedState = user.user_metadata?.qb_oauth_state as
+      | string
+      | undefined;
+    const stateExp = user.user_metadata?.qb_oauth_state_exp as
+      | number
+      | undefined;
 
-    const credentials = btoa(`${QB_CLIENT_ID}:${QB_CLIENT_SECRET}`);
-
-    const bodyParams = new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: QB_REDIRECT_URI,
+    // Consume immediately — clear from metadata regardless of outcome
+    await supabase.auth.updateUser({
+      data: { qb_oauth_state: null, qb_oauth_state_exp: null },
     });
 
-    console.log("[QB] Requesting token from:", QB_TOKEN_URL);
+    if (!storedState || storedState !== returnedState) {
+      throw new Error("OAuth state mismatch — possible CSRF attack.");
+    }
+    if (!stateExp || Date.now() > stateExp) {
+      throw new Error("OAuth state expired.");
+    }
 
-    const response = await fetch(QB_TOKEN_URL, {
+    // ── Token exchange ────────────────────────────────────────────────────────
+    const credentials = btoa(`${QB_CONFIG.clientId}:${QB_CONFIG.clientSecret}`);
+
+    const response = await fetch(QB_CONFIG.tokenUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
         Authorization: `Basic ${credentials}`,
         Accept: "application/json",
       },
-      body: bodyParams.toString(),
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: QB_CONFIG.redirectUri,
+      }).toString(),
     });
 
     const responseText = await response.text();
-    console.log("[QB] Token response status:", response.status);
-    console.log("[QB] Token response body:", responseText);
-
     if (!response.ok) {
       throw new Error(
         `Token exchange failed: ${response.status} - ${responseText}`,
       );
     }
 
-    const tokens = JSON.parse(responseText);
+    let tokens: Record<string, unknown>;
+    try {
+      tokens = JSON.parse(responseText);
+    } catch {
+      throw new Error(
+        `QB token endpoint returned non-JSON: ${responseText.slice(0, 200)}`,
+      );
+    }
 
-    // Get company info
-    const companyResponse = await fetch(
-      `${QB_COMPANY_URL}/v3/company/${realmId}/companyinfo/${realmId}?minorversion=65`,
-      {
-        headers: {
-          Authorization: `Bearer ${tokens.access_token}`,
-          Accept: "application/json",
-        },
-      },
-    );
-
-    console.log("[QB] Company response status:", companyResponse.status);
-
+    // ── Fetch company name ────────────────────────────────────────────────────
     let companyName = "Unknown Company";
-    if (companyResponse.ok) {
-      const companyData = await companyResponse.json();
-      companyName = companyData?.CompanyInfo?.CompanyName ?? "Unknown Company";
+    try {
+      const companyResponse = await fetch(
+        `${QB_CONFIG.companyUrl}/v3/company/${realmId}/companyinfo/${realmId}?minorversion=65`,
+        {
+          headers: {
+            Authorization: `Bearer ${tokens.access_token}`,
+            Accept: "application/json",
+          },
+        },
+      );
+      if (companyResponse.ok) {
+        const companyData = await companyResponse.json();
+        companyName =
+          companyData?.CompanyInfo?.CompanyName ?? "Unknown Company";
+      } else {
+        console.warn(
+          "[QB] Failed to fetch company name:",
+          companyResponse.status,
+        );
+      }
+    } catch (e) {
+      console.warn("[QB] Company name fetch threw:", e);
     }
 
     const now = new Date();
     const accessTokenExpiresAt = new Date(
-      now.getTime() + tokens.expires_in * 1000,
+      now.getTime() + (tokens.expires_in as number) * 1000,
     );
     const refreshTokenExpiresAt = new Date(
-      now.getTime() + tokens.x_refresh_token_expires_in * 1000,
+      now.getTime() + (tokens.x_refresh_token_expires_in as number) * 1000,
     );
 
     const { error: upsertError } = await supabase
       .from("quickbooks_connections")
-      .upsert({
-        user_id: user.id,
-        realm_id: realmId,
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        access_token_expires_at: accessTokenExpiresAt.toISOString(),
-        refresh_token_expires_at: refreshTokenExpiresAt.toISOString(),
-        company_name: companyName,
-        environment: QB_ENVIRONMENT,
-        updated_at: now.toISOString(),
-      });
+      .upsert(
+        {
+          user_id: user.id,
+          realm_id: realmId,
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          access_token_expires_at: accessTokenExpiresAt.toISOString(),
+          refresh_token_expires_at: refreshTokenExpiresAt.toISOString(),
+          company_name: companyName,
+          environment: QB_CONFIG.environment,
+          updated_at: now.toISOString(),
+        },
+        { onConflict: "user_id" },
+      );
 
     if (upsertError) {
-      console.error("[QB] Upsert error:", upsertError);
-      throw new Error("Failed to save QuickBooks connection");
+      console.error("[QB] Upsert failed — code:", upsertError.code);
+      console.error("[QB] Upsert failed — message:", upsertError.message);
+      console.error("[QB] Upsert failed — details:", upsertError.details);
+      console.error("[QB] Upsert failed — hint:", upsertError.hint);
+      throw new Error(
+        `Failed to save QuickBooks connection: ${upsertError.message}`,
+      );
     }
-
-    console.log("[QB] Connection saved successfully!");
   } catch (err) {
     console.error("[QB] exchangeCodeForTokens error:", err);
     throw err;
   }
 
-  redirect("/dashboard/quickbooks");
+  redirect("/dashboard");
 }
 
-// ─── Get QB Connection ────────────────────────────────────────────────────────
+// ── Get QB Connection ─────────────────────────────────────────────────────────
+
 export async function getQuickBooksConnection() {
   try {
     const supabase = await createClient();
-
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
-
     if (authError || !user) return null;
 
     const { data, error } = await supabase
@@ -163,7 +194,6 @@ export async function getQuickBooksConnection() {
       console.error("[getQuickBooksConnection] Error:", error);
       return null;
     }
-
     return data;
   } catch (err) {
     console.error("[getQuickBooksConnection] Unexpected error:", err);
@@ -171,15 +201,14 @@ export async function getQuickBooksConnection() {
   }
 }
 
-// ─── Disconnect QB ────────────────────────────────────────────────────────────
+// ── Disconnect QB ─────────────────────────────────────────────────────────────
+
 export async function disconnectQuickBooks(): Promise<void> {
   const supabase = await createClient();
-
   const {
     data: { user },
     error: authError,
   } = await supabase.auth.getUser();
-
   if (authError || !user) throw new Error("User not authenticated");
 
   const { error } = await supabase
@@ -188,44 +217,5 @@ export async function disconnectQuickBooks(): Promise<void> {
     .eq("user_id", user.id);
 
   if (error) throw new Error("Failed to disconnect QuickBooks");
-
   redirect("/dashboard/quickbooks");
-}
-
-
-export async function syncAllOrdersToQuickBooks(): Promise<{
-  success: number;
-  failed: number;
-  messages: string[];
-}> {
-  const supabase = await createClient();
-  const { data: orders, error } = await supabase
-    .from("orders")
-    .select("id, order_id, qb_invoice_id")
-    .is("qb_invoice_id", null);
-
-  if (error || !orders) {
-    return {
-      success: 0,
-      failed: 1,
-      messages: ["Failed to fetch unsynced orders"],
-    };
-  }
-
-  let success = 0;
-  let failed = 0;
-  const messages: string[] = [];
-
-  for (const order of orders) {
-    const result = await createQuickBooksInvoice(order.id);
-    if (result.success) {
-      success++;
-      messages.push(`✅ ${order.order_id} synced`);
-    } else {
-      failed++;
-      messages.push(`❌ ${order.order_id}: ${result.message}`);
-    }
-  }
-
-  return { success, failed, messages };
 }
