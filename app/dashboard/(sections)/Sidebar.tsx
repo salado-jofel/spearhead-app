@@ -21,62 +21,14 @@ import { SignOutButton } from "../(components)/SignOutButton";
 import { useSidebar } from "../(components)/SidebarContext";
 import { useAppSelector } from "@/store/hooks";
 
-const navItems = [
-  {
-    icon: LayoutDashboard,
-    label: "Dashboard",
-    href: "/dashboard",
-    doctorHidden: false,
-  },
-  {
-    icon: ShoppingCart,
-    label: "Orders",
-    href: "/dashboard/orders",
-    doctorHidden: false,
-  },
-  {
-    icon: Building2,
-    label: "Facilities",
-    href: "/dashboard/facilities",
-    doctorHidden: true,
-  },
-  {
-    icon: Package,
-    label: "Products",
-    href: "/dashboard/products",
-    doctorHidden: false,
-  },
-  {
-    icon: UserCircle,
-    label: "Profile",
-    href: "/dashboard/profile",
-    doctorHidden: false,
-  },
-  {
-    icon: Megaphone,
-    label: "Marketing",
-    href: "/dashboard/marketing",
-    doctorHidden: true,
-  },
-  {
-    icon: ScrollText,
-    label: "Contracts",
-    href: "/dashboard/contracts",
-    doctorHidden: false,
-  },
-  {
-    icon: BookOpen,
-    label: "Trainings",
-    href: "/dashboard/trainings",
-    doctorHidden: true,
-  },
-  // { icon: Plug, label: "QuickBooks", href: "/dashboard/quickbooks", doctorHidden: false },
-];
+
 
 export function Sidebar() {
   const pathname = usePathname();
   const { isOpen, close } = useSidebar();
   const userData = useAppSelector((state) => state.dashboard);
+
+
 
   // Auto-close on route change
   useEffect(() => { 
@@ -84,6 +36,58 @@ export function Sidebar() {
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isDoctor = userData.role === "doctor";
+
+  const navItems = [
+    {
+      icon: LayoutDashboard,
+      label: "Dashboard",
+      href: "/dashboard",
+      doctorHidden: false,
+    },
+    {
+      icon: ShoppingCart,
+      label: "Orders",
+      href: "/dashboard/orders",
+      doctorHidden: false,
+    },
+    {
+      icon: Building2,
+      label: "Facilities",
+      href: "/dashboard/facilities",
+      doctorHidden: true,
+    },
+    {
+      icon: Package,
+      label: "Products",
+      href: "/dashboard/products",
+      doctorHidden: false,
+    },
+    {
+      icon: UserCircle,
+      label: "Profile",
+      href: "/dashboard/profile",
+      doctorHidden: false,
+    },
+    {
+      icon: Megaphone,
+      label: "Marketing",
+      href: "/dashboard/marketing",
+      doctorHidden: true,
+    },
+    {
+      icon: ScrollText,
+      label: "Contracts",
+      href: "/dashboard/contracts",
+      doctorHidden: false,
+    },
+    {
+      icon: BookOpen,
+      label: "Trainings",
+      href: "/dashboard/trainings",
+      doctorHidden: true,
+    },
+    // { icon: Plug, label: "QuickBooks", href: "/dashboard/quickbooks", doctorHidden: false },
+  ];
 
   return (
     <>
