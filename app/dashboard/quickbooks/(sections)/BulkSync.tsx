@@ -12,7 +12,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { syncAllFacilitiesToQuickBooks } from "../../facilities/quickbook-actions";
-import { syncAllOrdersToQuickBooks } from "../actions";
+import { syncAllOrdersToQuickBooks } from "../../orders/quickbooks-actions";
 
 interface SyncResult {
   success: number;

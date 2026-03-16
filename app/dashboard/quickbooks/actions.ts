@@ -1,24 +1,29 @@
-// app/dashboard/quickbooks/actions.ts  ← UPDATE (replaces the whole file)
+// app/dashboard/quickbooks/actions.ts  ← FULL FILE
+
 "use server";
 
-import { cookies } from "next/headers";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 import { QB_CONFIG } from "@/utils/quickbooks/config";
 
-const QB_STATE_COOKIE = "qb_oauth_state";
+// ── Redirect to QuickBooks OAuth ──────────────────────────────────────────────
 
-// ── Generate OAuth URL ────────────────────────────────────────────────────────
+export async function redirectToQuickBooks(): Promise<never> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+  if (error || !user) redirect("/sign-in");
 
-export async function getQuickBooksAuthUrl(): Promise<string> {
   const state = crypto.randomUUID();
 
-  // Store state in a short-lived httpOnly cookie for CSRF verification on callback
-  (await cookies()).set(QB_STATE_COOKIE, state, {
-    httpOnly: true,
-    sameSite: "lax",
-    maxAge: 60 * 10, // 10 minutes
-    path: "/",
+  // Store state server-side in user metadata — survives cross-site redirects
+  await supabase.auth.updateUser({
+    data: {
+      qb_oauth_state: state,
+      qb_oauth_state_exp: Date.now() + 10 * 60 * 1000,
+    },
   });
 
   const params = new URLSearchParams({
@@ -29,7 +34,7 @@ export async function getQuickBooksAuthUrl(): Promise<string> {
     state,
   });
 
-  return `${QB_CONFIG.authUrl}?${params.toString()}`;
+  redirect(`${QB_CONFIG.authUrl}?${params.toString()}`);
 }
 
 // ── Exchange Code for Tokens ──────────────────────────────────────────────────
@@ -37,18 +42,9 @@ export async function getQuickBooksAuthUrl(): Promise<string> {
 export async function exchangeCodeForTokens(
   code: string,
   realmId: string,
-  returnedState: string, // ← was "p0" — now named and actually used ✅
+  returnedState: string,
 ): Promise<void> {
   try {
-    // ── Verify OAuth state (CSRF protection) ──────────────────────────────────
-    const cookieStore = await cookies();
-    const storedState = cookieStore.get(QB_STATE_COOKIE)?.value;
-    cookieStore.delete(QB_STATE_COOKIE); // consume immediately — one-time use
-
-    if (!storedState || storedState !== returnedState) {
-      throw new Error("OAuth state mismatch — possible CSRF attack.");
-    }
-
     const supabase = await createClient();
     const {
       data: { user },
@@ -56,6 +52,27 @@ export async function exchangeCodeForTokens(
     } = await supabase.auth.getUser();
     if (authError || !user) throw new Error("User not authenticated");
 
+    // ── Verify OAuth state (CSRF protection) ─────────────────────────────────
+    const storedState = user.user_metadata?.qb_oauth_state as
+      | string
+      | undefined;
+    const stateExp = user.user_metadata?.qb_oauth_state_exp as
+      | number
+      | undefined;
+
+    // Consume immediately — clear from metadata regardless of outcome
+    await supabase.auth.updateUser({
+      data: { qb_oauth_state: null, qb_oauth_state_exp: null },
+    });
+
+    if (!storedState || storedState !== returnedState) {
+      throw new Error("OAuth state mismatch — possible CSRF attack.");
+    }
+    if (!stateExp || Date.now() > stateExp) {
+      throw new Error("OAuth state expired.");
+    }
+
+    // ── Token exchange ────────────────────────────────────────────────────────
     const credentials = btoa(`${QB_CONFIG.clientId}:${QB_CONFIG.clientSecret}`);
 
     const response = await fetch(QB_CONFIG.tokenUrl, {
@@ -79,7 +96,6 @@ export async function exchangeCodeForTokens(
       );
     }
 
-    // ── Safe JSON parse ───────────────────────────────────────────────────────
     let tokens: Record<string, unknown>;
     try {
       tokens = JSON.parse(responseText);
@@ -125,19 +141,30 @@ export async function exchangeCodeForTokens(
 
     const { error: upsertError } = await supabase
       .from("quickbooks_connections")
-      .upsert({
-        user_id: user.id,
-        realm_id: realmId,
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token,
-        access_token_expires_at: accessTokenExpiresAt.toISOString(),
-        refresh_token_expires_at: refreshTokenExpiresAt.toISOString(),
-        company_name: companyName,
-        environment: QB_CONFIG.environment,
-        updated_at: now.toISOString(),
-      });
+      .upsert(
+        {
+          user_id: user.id,
+          realm_id: realmId,
+          access_token: tokens.access_token,
+          refresh_token: tokens.refresh_token,
+          access_token_expires_at: accessTokenExpiresAt.toISOString(),
+          refresh_token_expires_at: refreshTokenExpiresAt.toISOString(),
+          company_name: companyName,
+          environment: QB_CONFIG.environment,
+          updated_at: now.toISOString(),
+        },
+        { onConflict: "user_id" },
+      );
 
-    if (upsertError) throw new Error("Failed to save QuickBooks connection");
+    if (upsertError) {
+      console.error("[QB] Upsert failed — code:", upsertError.code);
+      console.error("[QB] Upsert failed — message:", upsertError.message);
+      console.error("[QB] Upsert failed — details:", upsertError.details);
+      console.error("[QB] Upsert failed — hint:", upsertError.hint);
+      throw new Error(
+        `Failed to save QuickBooks connection: ${upsertError.message}`,
+      );
+    }
   } catch (err) {
     console.error("[QB] exchangeCodeForTokens error:", err);
     throw err;
@@ -192,7 +219,3 @@ export async function disconnectQuickBooks(): Promise<void> {
   if (error) throw new Error("Failed to disconnect QuickBooks");
   redirect("/dashboard/quickbooks");
 }
-
-// ── NOTE ──────────────────────────────────────────────────────────────────────
-// getValidAccessToken → lives in utils/quickbooks/client.ts (DO NOT duplicate here)
-// syncAllOrdersToQuickBooks → moved to dashboard/orders/quickbooks-actions.ts
