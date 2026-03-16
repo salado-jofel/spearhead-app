@@ -1,6 +1,7 @@
+// app/(components)/SubmitButton.tsx
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
-import { ReactNode } from "react";
+import { CSSProperties, ReactNode } from "react";
 
 export default function SubmitButton({
   isPending,
@@ -13,6 +14,7 @@ export default function SubmitButton({
   asChild,
   onClick,
   form,
+  style, // ← add this
 }: {
   isPending?: boolean;
   type: "button" | "submit" | "reset" | undefined;
@@ -42,6 +44,7 @@ export default function SubmitButton({
   asChild?: boolean;
   onClick?: () => void;
   form?: string;
+  style?: CSSProperties; // ← add this
 }) {
   return (
     <Button
@@ -53,6 +56,7 @@ export default function SubmitButton({
       className={`${classname} duration-200 cursor-pointer`}
       onClick={onClick}
       form={form}
+      style={style} // ← add this
     >
       {isPending ? (
         <>
