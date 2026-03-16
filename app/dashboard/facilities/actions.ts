@@ -22,7 +22,18 @@ const FACILITY_COLUMNS =
 const FACILITY_PATH = "/dashboard/facilities";
 
 // ── TODO: update these to match your actual DB enum values ───────────────────
-const FACILITY_TYPES = ["Hospital", "Clinic", "Lab", "Pharmacy"] as const;
+// app/dashboard/facilities/actions.ts
+const FACILITY_TYPES = [
+  "Hospital",
+  "Clinic",
+  "Pharmacy",
+  "Laboratory",
+  "Rehabilitation Center",
+  "Dental Clinic",
+  "Birthing Center",
+] as const;
+
+
 const FACILITY_STATUSES = ["Active", "Inactive"] as const;
 
 // ── GET ───────────────────────────────────────────────────────────────────────
