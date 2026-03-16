@@ -1,19 +1,22 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { dbSelect, dbInsert, dbUpdate, dbDelete, getSupabaseClient } from "@/utils/supabase/db";
-import type {
-  Product,
-  InsertProductPayload,
-  UpdateProductPayload,
-} from "@/app/(interfaces)/product";
-import { createQBItem, syncProductToQuickBooks } from "./quickbooks-actions";
+import { dbSelect, getSupabaseClient } from "@/utils/supabase/db";
+import type { Product, UpdateProductPayload } from "@/app/(interfaces)/product";
+import { requireUser } from "@/utils/auth-guard";
+import {
+  createQBItem,
+  syncProductToQuickBooks,
+  deactivateQBItem,
+  reactivateQBItem,
+} from "./quickbooks-actions";
 
 const PRODUCT_TABLE = "products";
 const PRODUCT_COLUMNS = "id, created_at, name, price, qb_item_id, qb_synced_at";
 const PRODUCTS_PATH = "/dashboard/products";
 
-// ─── READ ─────────────────────────────────────────────────────────────────────
+// ── READ ──────────────────────────────────────────────────────────────────────
+
 export async function getAllProducts(): Promise<Product[]> {
   const { data, error } = await dbSelect<Product>({
     table: PRODUCT_TABLE,
@@ -29,104 +32,135 @@ export async function getAllProducts(): Promise<Product[]> {
   return data ?? [];
 }
 
+// ── ADD ───────────────────────────────────────────────────────────────────────
+
 export async function addProduct(formData: FormData): Promise<Product> {
+  await requireUser();
+
   const name = formData.get("name") as string;
   const price = parseFloat(formData.get("price") as string) || 0;
 
-  // ── Step 1: Save to DB first — always ────────────────────
-  const { data: product, error: insertError } = await dbInsert<
-    InsertProductPayload,
-    Product
-  >({
-    table: PRODUCT_TABLE,
-    payload: { name, price },
-    select: PRODUCT_COLUMNS,
-  });
+  // Step 1: QB first — throws on failure, DB never touched
+  const qbItemId = await createQBItem(name, price);
 
-  if (insertError || !product) {
-    console.error("[addProduct] DB insert error:", insertError);
+  // Step 2: DB insert
+  const supabase = await getSupabaseClient();
+  const { data, error: insertError } = await supabase
+    .from(PRODUCT_TABLE)
+    .insert({
+      name,
+      price,
+      qb_item_id: qbItemId,
+      qb_synced_at: new Date().toISOString(),
+    })
+    .select(PRODUCT_COLUMNS)
+    .single();
+
+  if (insertError || !data) {
+    console.error("[addProduct] DB insert error:", insertError?.message);
+    // Compensate — deactivate the QB item we just created
+    try {
+      await deactivateQBItem(qbItemId);
+    } catch (e) {
+      console.error("[addProduct] QB compensation failed:", e);
+    }
     throw new Error("Failed to save product to database.");
   }
 
-  // ── Step 2: Try QB sync — non-blocking ───────────────────
-  try {
-    const qbItemId = await createQBItem(name, price);
+  revalidatePath(PRODUCTS_PATH);
+  return data as Product;
+}
 
-    if (qbItemId) {
-      const supabase = await getSupabaseClient();
-      await supabase
-        .from(PRODUCT_TABLE)
-        .update({
-          qb_item_id: qbItemId,
-          qb_synced_at: new Date().toISOString(),
-        })
-        .eq("id", product.id);
+// ── EDIT ──────────────────────────────────────────────────────────────────────
 
-      // Reflect QB fields on the returned object
-      product.qb_item_id = qbItemId;
-      product.qb_synced_at = new Date().toISOString();
-    } else {
-      console.warn("[addProduct] QB sync skipped — no QB connection.");
+export async function editProduct(
+  productId: string,
+  formData: FormData,
+): Promise<void> {
+  await requireUser();
+
+  const name = formData.get("name") as string;
+  const price = parseFloat(formData.get("price") as string) || 0;
+
+  const supabase = await getSupabaseClient();
+
+  // Fetch current for QB revert if DB fails
+  const { data: current, error: fetchErr } = await supabase
+    .from(PRODUCT_TABLE)
+    .select(PRODUCT_COLUMNS)
+    .eq("id", productId)
+    .single();
+
+  if (fetchErr || !current) throw new Error("Product not found.");
+
+  // Step 1: QB sync first — blocking
+  const qbResult = await syncProductToQuickBooks(productId, { name, price });
+  if (!qbResult.success) {
+    throw new Error(`QB sync failed: ${qbResult.message}`);
+  }
+
+  // Step 2: DB update
+  const { error: updateErr } = await supabase
+    .from(PRODUCT_TABLE)
+    .update({
+      name,
+      price,
+      qb_synced_at: new Date().toISOString(),
+    })
+    .eq("id", productId);
+
+  if (updateErr) {
+    console.error("[editProduct] DB error:", updateErr.message);
+    // Revert QB back to old values
+    try {
+      await syncProductToQuickBooks(productId, {
+        name: current.name,
+        price: current.price,
+      });
+    } catch (e) {
+      console.error("[editProduct] QB revert failed:", e);
     }
-  } catch (qbErr) {
-    // No QB connected yet — product is already saved, ignore
-    console.warn("[addProduct] QB auto-sync failed (non-blocking):", qbErr);
+    throw new Error("Failed to update product in database.");
   }
 
   revalidatePath(PRODUCTS_PATH);
-  return product;
 }
 
+// ── DELETE ────────────────────────────────────────────────────────────────────
 
-// ─── UPDATE ───────────────────────────────────────────────────────────────────
-export async function editProduct(productId: string, formData: FormData) {
-  try {
-    const payload: UpdateProductPayload = {
-      name: formData.get("name") as string,
-      price: parseFloat(formData.get("price") as string) || 0,
-    };
+export async function deleteProduct(productId: string): Promise<void> {
+  await requireUser();
 
-    const { error } = await dbUpdate<UpdateProductPayload>({
-      table: PRODUCT_TABLE,
-      payload,
-      column: "id",
-      value: productId,
-    });
+  const supabase = await getSupabaseClient();
 
-    if (error) {
-      console.error("[editProduct] Supabase error:", error.message);
-      throw new Error("Failed to update product");
+  const { data: current, error: fetchErr } = await supabase
+    .from(PRODUCT_TABLE)
+    .select(PRODUCT_COLUMNS)
+    .eq("id", productId)
+    .single();
+
+  if (fetchErr || !current) throw new Error("Product not found.");
+  if (!current.qb_item_id) throw new Error("Product has no QB item ID.");
+
+  // Step 1: Deactivate in QB first
+  await deactivateQBItem(current.qb_item_id);
+
+  // Step 2: Delete from DB
+  const { error: deleteErr } = await supabase
+    .from(PRODUCT_TABLE)
+    .delete()
+    .eq("id", productId);
+
+  if (deleteErr) {
+    console.error("[deleteProduct] DB error:", deleteErr.message);
+    // Reactivate QB item since DB delete failed
+    try {
+      await reactivateQBItem(current.qb_item_id, current.name, current.price);
+    } catch (e) {
+      console.error("[deleteProduct] QB reactivation failed:", e);
     }
-
-    // Non-blocking QB sync for edits — revalidatePath is handled below
-    syncProductToQuickBooks(productId).catch((err) => {
-      console.error("[editProduct] QB sync error (non-blocking):", err);
-    });
-
-    revalidatePath(PRODUCTS_PATH);
-  } catch (err) {
-    console.error("[editProduct] Unexpected error:", err);
-    throw new Error("An unexpected error occurred while updating the product");
+    throw new Error("Failed to delete product from database.");
   }
-}
 
-// ─── DELETE ───────────────────────────────────────────────────────────────────
-export async function deleteProduct(productId: string) {
-  try {
-    const { error } = await dbDelete({
-      table: PRODUCT_TABLE,
-      column: "id",
-      value: productId,
-    });
-
-    if (error) {
-      console.error("[deleteProduct] Supabase error:", error.message);
-      throw new Error("Failed to delete product");
-    }
-
-    revalidatePath(PRODUCTS_PATH);
-  } catch (err) {
-    console.error("[deleteProduct] Unexpected error:", err);
-    throw new Error("An unexpected error occurred while deleting the product");
-  }
+  revalidatePath(PRODUCTS_PATH);
 }
