@@ -113,7 +113,6 @@ export async function syncProductToQuickBooks(
       return { success: false, message: "Product not found" };
     }
 
-    console.log("[QB Product] Syncing product:", product.name);
 
     const incomeAccountRef = await getIncomeAccountRef();
 
@@ -136,10 +135,7 @@ export async function syncProductToQuickBooks(
     let qbItemId: string;
 
     if (product.qb_item_id) {
-      console.log(
-        "[QB Product] Updating existing QB item:",
-        product.qb_item_id,
-      );
+  
 
       const existing = await qbRequest<QBItemResponse>(
         "GET",
@@ -162,7 +158,6 @@ export async function syncProductToQuickBooks(
 
       qbItemId = updated.Item.Id;
     } else {
-      console.log("[QB Product] Creating new QB item");
 
       const created = await qbRequest<QBItemResponse>(
         "POST",
@@ -192,7 +187,6 @@ export async function syncProductToQuickBooks(
       };
     }
 
-    console.log("[QB Product] Sync successful! QB Item ID:", qbItemId);
 
     // NOTE: revalidatePath removed — caller (actions.ts) handles revalidation
 

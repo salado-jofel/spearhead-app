@@ -103,7 +103,6 @@ export async function createQuickBooksInvoice(
       return { success: false, message: "Product not synced to QuickBooks" };
     }
 
-    console.log("[QB Invoice] Creating invoice for order:", order.order_id);
 
     const qbInvoiceId = await createQBInvoiceFromData({
       orderDocNumber: order.order_id,
@@ -118,7 +117,6 @@ export async function createQuickBooksInvoice(
       return { success: false, message: "Failed to create QB invoice" };
     }
 
-    console.log("[QB Invoice] Created invoice ID:", qbInvoiceId);
 
     const { error: updateError } = await supabase
       .from("orders")

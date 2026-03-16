@@ -4,11 +4,12 @@ import React, { useActionState, useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Mail, Lock, Eye, EyeOff, UserPlus, ArrowLeft } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, UserPlus, ArrowLeft, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { login } from "../actions";
 import SubmitButton from "@/app/(components)/SubmitButton";
 import ErrorAlert from "@/app/(components)/ErrorAlert";
+import { useSearchParams } from "next/navigation";
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -36,10 +37,23 @@ export default function SignInForm() {
     }
   }, [state]);
 
+  const searchParams = useSearchParams();
+  const qbError = searchParams.get("error");
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-slate-50 p-4 select-none">
       <div className="w-full max-w-110 bg-white rounded-2xl shadow-xl shadow-slate-200/60 p-8 md:p-12 border border-slate-100">
         {/* Logo and Header */}
+        {/* ── QB connection error from failed callback ── */}
+        {qbError && (
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-red-100 bg-red-50 px-4 py-3">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-red-500" />
+            <p className="text-sm text-red-600">
+              {decodeURIComponent(qbError)}
+            </p>
+          </div>
+        )}
+
         <div className="flex flex-col items-center text-center mb-10">
           <div className="w-12 h-12 text-emerald-500 mb-4">
             <svg viewBox="0 0 24 24" fill="currentColor">

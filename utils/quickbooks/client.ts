@@ -47,7 +47,6 @@ export async function getValidAccessToken(): Promise<{
     }
 
     // Token expired — refresh it
-    console.log("[QB Client] Access token expired, refreshing...");
 
     const credentials = btoa(`${QB_CLIENT_ID}:${QB_CLIENT_SECRET}`);
 
@@ -88,7 +87,6 @@ export async function getValidAccessToken(): Promise<{
       })
       .eq("user_id", user.id);
 
-    console.log("[QB Client] Token refreshed successfully");
 
     return {
       accessToken: tokens.access_token,
@@ -115,7 +113,6 @@ export async function qbRequest<T>(
 
   const url = `${QB_BASE_URL}/v3/company/${auth.realmId}${path}?minorversion=65`;
 
-  console.log(`[QB Client] ${method} ${url}`);
 
   const response = await fetch(url, {
     method,

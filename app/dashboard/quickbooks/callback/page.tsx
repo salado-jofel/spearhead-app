@@ -1,5 +1,8 @@
+import { createClient } from "@/utils/supabase/server";
 import { exchangeCodeForTokens } from "../actions";
 import { AlertCircle } from "lucide-react";
+import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 
 export const dynamic = "force-dynamic";
 
@@ -14,98 +17,36 @@ interface Props {
 
 export default async function QuickBooksCallbackPage({ searchParams }: Props) {
   const params = await searchParams;
+  const supabase = await createClient();
 
+  // ── Shared abort: sign out + back to sign-in ─────────
+  async function abortLogin(reason: string) {
+    await supabase.auth.signOut();
+    redirect(`/sign-in?error=${encodeURIComponent(reason)}`);
+  }
+
+  // ── QB denied / user cancelled ───────────────────────
   if (params.error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 max-w-md w-full text-center border border-red-100">
-          <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-7 h-7 text-red-500" />
-          </div>
-          <h2 className="text-xl font-bold text-slate-800 mb-2">
-            Connection Failed
-          </h2>
-          <p className="text-slate-500 text-sm mb-6">
-            QuickBooks authorization was denied or failed. Please try again.
-          </p>
-          <a
-            href="/dashboard/quickbooks"
-            className="inline-flex items-center justify-center w-full h-11 bg-[#2db0b0] hover:bg-[#249191] text-white font-medium rounded-lg transition-colors"
-          >
-            Try Again
-          </a>
-        </div>
-      </div>
-    );
+    await abortLogin("QuickBooks authorization was denied. Please try again.");
   }
 
+  // ── Missing OAuth params ──────────────────────────────
   if (!params.code || !params.realmId) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 max-w-md w-full text-center border border-yellow-100">
-          <div className="w-14 h-14 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-7 h-7 text-yellow-500" />
-          </div>
-          <h2 className="text-xl font-bold text-slate-800 mb-2">
-            Invalid Callback
-          </h2>
-          <p className="text-slate-500 text-sm mb-6">
-            Missing required parameters from QuickBooks. Please try connecting
-            again.
-          </p>
-          <a
-            href="/dashboard/quickbooks"
-            className="inline-flex items-center justify-center w-full h-11 bg-[#2db0b0] hover:bg-[#249191] text-white font-medium rounded-lg transition-colors"
-          >
-            Go Back
-          </a>
-        </div>
-      </div>
-    );
+    await abortLogin("Invalid QuickBooks callback. Please sign in again.");
   }
 
+  // ── Exchange code for tokens ──────────────────────────
   try {
-    await exchangeCodeForTokens(params.code, params.realmId);
+    await exchangeCodeForTokens(params.code!, params.realmId!);
   } catch (err) {
-    if (err instanceof Error && err.message.includes("NEXT_REDIRECT")) {
-      throw err;
-    }
+    // ✅ KEY FIX: redirect() in Next.js throws internally.
+    // Re-throw it so the navigation actually happens.
+    // Only call abortLogin for REAL errors.
+    if (isRedirectError(err)) throw err;
 
-    console.error("[Callback] Error:", err);
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-        <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 max-w-md w-full text-center border border-red-100">
-          <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-7 h-7 text-red-500" />
-          </div>
-          <h2 className="text-xl font-bold text-slate-800 mb-2">
-            Token Exchange Failed
-          </h2>
-          <p className="text-red-400 text-xs font-mono bg-red-50 p-3 rounded-lg mb-6 text-left break-all">
-            {err instanceof Error ? err.message : "Unknown error"}
-          </p>
-          <a
-            href="/dashboard/quickbooks"
-            className="inline-flex items-center justify-center w-full h-11 bg-[#2db0b0] hover:bg-[#249191] text-white font-medium rounded-lg transition-colors"
-          >
-            Try Again
-          </a>
-        </div>
-      </div>
-    );
+    await abortLogin("Failed to connect QuickBooks. Please sign in again.");
   }
 
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
-      <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8 max-w-md w-full text-center">
-        <div className="w-14 h-14 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <div className="w-6 h-6 border-4 border-teal-500 border-t-transparent rounded-full animate-spin" />
-        </div>
-        <h2 className="text-xl font-bold text-slate-800 mb-2">Connecting...</h2>
-        <p className="text-slate-500 text-sm">
-          Completing your QuickBooks connection. Please wait.
-        </p>
-      </div>
-    </div>
-  );
+  // Fallback redirect if exchangeCodeForTokens doesn't call redirect() itself
+  redirect("/dashboard");
 }

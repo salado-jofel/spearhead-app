@@ -61,7 +61,6 @@ export async function syncFacilityToQuickBooks(
       return { success: false, message: "Facility not found" };
     }
 
-    console.log("[QB Facility] Syncing facility:", facility.name);
 
     const customerPayload: QBCustomer = {
       DisplayName: facility.name,
@@ -76,10 +75,7 @@ export async function syncFacilityToQuickBooks(
 
     if (facility.qb_customer_id) {
       // Update existing QB customer
-      console.log(
-        "[QB Facility] Updating existing QB customer:",
-        facility.qb_customer_id,
-      );
+ 
 
       const existing = await qbRequest<QBCustomerResponse>(
         "GET",
@@ -106,7 +102,6 @@ export async function syncFacilityToQuickBooks(
       qbCustomerId = updated.Customer.Id;
     } else {
       // Create new QB customer
-      console.log("[QB Facility] Creating new QB customer");
 
       const created = await qbRequest<QBCustomerResponse>(
         "POST",
@@ -137,7 +132,6 @@ export async function syncFacilityToQuickBooks(
       };
     }
 
-    console.log("[QB Facility] Sync successful! QB Customer ID:", qbCustomerId);
 
     // NOTE: revalidatePath removed — caller (actions.ts) handles revalidation
 

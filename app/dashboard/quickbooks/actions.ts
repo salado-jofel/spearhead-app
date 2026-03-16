@@ -9,13 +9,12 @@ const QB_CLIENT_SECRET = process.env.QB_CLIENT_SECRET!;
 const QB_REDIRECT_URI = process.env.QB_REDIRECT_URI!;
 const QB_ENVIRONMENT = process.env.QB_ENVIRONMENT || "sandbox";
 
-const QB_AUTH_URL = "https://appcenter.intuit.com/connect/oauth2";
-const QB_TOKEN_URL =
-  "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer";
+const QB_AUTH_URL = process.env.QB_AUTH_URL!;
+const QB_TOKEN_URL = process.env.QB_TOKEN_URL!;
 const QB_COMPANY_URL =
   QB_ENVIRONMENT === "sandbox"
-    ? "https://sandbox-quickbooks.api.intuit.com"
-    : "https://quickbooks.api.intuit.com";
+    ? process.env.QB_COMPANY_URL_1
+    : process.env.QB_COMPANY_URL_2;
 
 // ─── Generate OAuth URL ───────────────────────────────────────────────────────
 export async function getQuickBooksAuthUrl(): Promise<string> {
@@ -48,11 +47,7 @@ export async function exchangeCodeForTokens(
     if (authError || !user) throw new Error("User not authenticated");
 
     // Debug logs
-    console.log("[QB] CLIENT_ID exists:", !!QB_CLIENT_ID);
-    console.log("[QB] CLIENT_SECRET exists:", !!QB_CLIENT_SECRET);
-    console.log("[QB] REDIRECT_URI:", QB_REDIRECT_URI);
-    console.log("[QB] CODE length:", code?.length);
-    console.log("[QB] REALM_ID:", realmId);
+ 
 
     const credentials = btoa(`${QB_CLIENT_ID}:${QB_CLIENT_SECRET}`);
 
@@ -62,7 +57,6 @@ export async function exchangeCodeForTokens(
       redirect_uri: QB_REDIRECT_URI,
     });
 
-    console.log("[QB] Requesting token from:", QB_TOKEN_URL);
 
     const response = await fetch(QB_TOKEN_URL, {
       method: "POST",
@@ -75,8 +69,7 @@ export async function exchangeCodeForTokens(
     });
 
     const responseText = await response.text();
-    console.log("[QB] Token response status:", response.status);
-    console.log("[QB] Token response body:", responseText);
+   
 
     if (!response.ok) {
       throw new Error(
@@ -97,7 +90,6 @@ export async function exchangeCodeForTokens(
       },
     );
 
-    console.log("[QB] Company response status:", companyResponse.status);
 
     let companyName = "Unknown Company";
     if (companyResponse.ok) {
@@ -132,13 +124,12 @@ export async function exchangeCodeForTokens(
       throw new Error("Failed to save QuickBooks connection");
     }
 
-    console.log("[QB] Connection saved successfully!");
   } catch (err) {
     console.error("[QB] exchangeCodeForTokens error:", err);
     throw err;
   }
 
-  redirect("/dashboard/quickbooks");
+  redirect("/dashboard");
 }
 
 // ─── Get QB Connection ────────────────────────────────────────────────────────
@@ -229,3 +220,65 @@ export async function syncAllOrdersToQuickBooks(): Promise<{
 
   return { success, failed, messages };
 }
+
+// app/dashboard/quickbooks/actions.ts — add this helper
+
+export async function getValidAccessToken(userId: string): Promise<string> {
+  const supabase = await createClient();
+
+  const { data: conn } = await supabase
+    .from("quickbooks_connections")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  if (!conn) throw new Error("No QuickBooks connection found.");
+
+  // ── access_token still valid ──────────────────────────
+  if (new Date(conn.access_token_expires_at) > new Date()) {
+    return conn.access_token;
+  }
+
+  // ── access_token expired → use refresh_token ─────────
+  if (new Date(conn.refresh_token_expires_at) <= new Date()) {
+    throw new Error("QuickBooks refresh token expired. Please reconnect.");
+  }
+
+  const credentials = btoa(`${QB_CLIENT_ID}:${QB_CLIENT_SECRET}`);
+  const res = await fetch(QB_TOKEN_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      Authorization: `Basic ${credentials}`,
+      Accept: "application/json",
+    },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: conn.refresh_token,
+    }),
+  });
+
+  if (!res.ok) throw new Error("Failed to refresh QuickBooks token.");
+
+  const tokens = await res.json();
+  const now = new Date();
+
+  // ── Save new tokens back to DB ────────────────────────
+  await supabase
+    .from("quickbooks_connections")
+    .update({
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      access_token_expires_at: new Date(
+        now.getTime() + tokens.expires_in * 1000
+      ).toISOString(),
+      refresh_token_expires_at: new Date(
+        now.getTime() + tokens.x_refresh_token_expires_in * 1000
+      ).toISOString(),
+      updated_at: now.toISOString(),
+    })
+    .eq("user_id", userId);
+
+  return tokens.access_token;
+}
+

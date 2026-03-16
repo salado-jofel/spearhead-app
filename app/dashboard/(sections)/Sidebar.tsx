@@ -30,7 +30,7 @@ const navItems = [
   { icon: Megaphone, label: "Marketing", href: "/dashboard/marketing" },
   { icon: ScrollText, label: "Contracts", href: "/dashboard/contracts" },
   { icon: BookOpen, label: "Trainings", href: "/dashboard/trainings" },
-  { icon: Plug, label: "QuickBooks", href: "/dashboard/quickbooks" },
+  // { icon: Plug, label: "QuickBooks", href: "/dashboard/quickbooks" },
 ];
 
 type UserData = {
