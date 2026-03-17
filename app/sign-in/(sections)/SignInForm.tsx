@@ -4,7 +4,7 @@ import React, { useActionState, useState, useEffect } from "react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Mail, Lock, UserPlus, ArrowLeft, AlertCircle } from "lucide-react";
 import Link from "next/link";
-import { login } from "../actions";
+import { signIn } from "../(services)/actions";
 import SubmitButton from "@/app/(components)/SubmitButton";
 import ErrorAlert from "@/app/(components)/ErrorAlert";
 import { useSearchParams } from "next/navigation";
@@ -13,7 +13,7 @@ import { PasswordToggle } from "@/app/(components)/PasswordToggle";
 
 export default function SignInForm() {
   const [showPassword, setShowPassword] = useState(false);
-  const [state, formAction, isPending] = useActionState(login, null);
+  const [state, formAction, isPending] = useActionState(signIn, null);
   const [formValues, setFormValues] = useState({ email: "", password: "" });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
