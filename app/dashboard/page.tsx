@@ -6,8 +6,9 @@ import Providers from "./(sections)/Providers";
 import RecentOrdersTable from "./(sections)/RecentOrdersTable";
 import { createClient } from "@/utils/supabase/server";
 import StatsCards from "./(sections)/StatsCard";
-import Headers from "./(sections)/Headers";
+
 import { getUserData } from "./(services)/actions";
+import { DashboardHeader } from "../(components)/DashboardHeader";
 
 export default async function DashboardPage() {
   const [facilities, orders, userData] = await Promise.all([
@@ -26,7 +27,7 @@ export default async function DashboardPage() {
   return (
     <Providers facilities={facilities} orders={orders} userData={userData}>
       <div className="p-4 md:p-8 w-full mx-auto space-y-6 select-none">
-        <Headers />
+        <DashboardHeader title="Dashboard" showGreeting />
         <StatsCards
           totalFacilities={totalFacilities}
           totalOrders={totalOrders}

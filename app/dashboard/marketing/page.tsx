@@ -1,9 +1,9 @@
 export const dynamic = "force-dynamic";
 
-import { getMarketingMaterials } from "./actions";
+import { getMarketingMaterials } from "./(services)/actions";
 import Providers from "./(sections)/Providers";
-import Header from "./(sections)/Header";
 import MarketingCards from "./(sections)/MarketingCards";
+import { DashboardHeader } from "@/app/(components)/DashboardHeader";
 
 export default async function MarketingPage() {
   const materials = await getMarketingMaterials();
@@ -11,7 +11,10 @@ export default async function MarketingPage() {
   return (
     <Providers materials={materials}>
       <div className="p-4 md:p-8 mx-auto space-y-6">
-        <Header />
+        <DashboardHeader
+          title="Marketing"
+          description="Your marketing materials & resources"
+        />
         <MarketingCards />
       </div>
     </Providers>
