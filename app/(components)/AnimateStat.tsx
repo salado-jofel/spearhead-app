@@ -32,7 +32,7 @@ export function AnimatedStat({
   return (
     <motion.div
       variants={fadeUp}
-      className="flex flex-col items-center px-6 py-4"
+      className="flex flex-col items-center px-6 py-4 justify-center w-full"
     >
       <span className="text-3xl font-bold text-white">
         {count}
