@@ -1,7 +1,6 @@
 import { Hero } from "./(sections)/Hero";
 import { Navbar } from "./(sections)/Navbar";
 import { Footer } from "./(sections)/Footer";
-import { Contact } from "lucide-react";
 import { GettingStarted } from "./(sections)/GettingStarted";
 import { LiveDemo } from "./(sections)/LiveDemo";
 import { Testimonials } from "./(sections)/Testimonials";
@@ -18,7 +17,6 @@ export default function Home() {
       <Testimonials />
       <GettingStarted />
       <LiveDemo />
-      <Contact />
       <Footer />
     </main>
   );

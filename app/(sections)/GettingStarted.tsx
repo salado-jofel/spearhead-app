@@ -2,6 +2,7 @@
 
 import { VIEWPORT, badgePop, fadeUp } from "@/components/ui/animations";
 import { motion } from "framer-motion";
+import { StepCard } from "../(components)/StepCard";
 
 const steps = [
   {
@@ -94,7 +95,6 @@ export function GettingStarted() {
   return (
     <section className="py-24 bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
-        {/* Badge */}
         <motion.div
           className="flex justify-center mb-6"
           initial="hidden"
@@ -107,7 +107,6 @@ export function GettingStarted() {
           </span>
         </motion.div>
 
-        {/* Heading */}
         <motion.div
           className="text-center mb-16"
           initial="hidden"
@@ -121,74 +120,17 @@ export function GettingStarted() {
           </h2>
         </motion.div>
 
-        {/* Steps */}
         <div className="relative flex flex-col md:flex-row items-start justify-center">
           {steps.map((step, index) => (
-            <div
+            <StepCard
               key={step.number}
-              className="flex md:flex-col items-start md:items-center gap-4 md:gap-0 flex-1"
-            >
-              <motion.div
-                className="flex flex-col md:items-center md:text-center flex-1"
-                initial="hidden"
-                whileInView="visible"
-                viewport={VIEWPORT}
-                variants={{
-                  hidden: { opacity: 0, y: 40 },
-                  visible: {
-                    opacity: 1,
-                    y: 0,
-                    transition: {
-                      duration: 0.55,
-                      delay: index * 0.15,
-                      ease: [0.22, 1, 0.36, 1],
-                    },
-                  },
-                }}
-              >
-                <p className="text-teal-400/50 text-xs font-bold tracking-widest mb-2">
-                  {step.number}
-                </p>
-                <motion.div
-                  className="w-14 h-14 rounded-2xl bg-teal-500 text-white flex items-center justify-center shadow-lg shadow-teal-200 mb-4 flex-shrink-0"
-                  whileHover={{ scale: 1.12, rotate: -6 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 15 }}
-                >
-                  {step.icon}
-                </motion.div>
-                <h3 className="font-bold text-gray-900 mb-2 text-base">
-                  {step.title}
-                </h3>
-                <p className="text-gray-500 text-sm leading-relaxed max-w-[200px]">
-                  {step.description}
-                </p>
-              </motion.div>
-
-              {/* Arrow */}
-              {index < steps.length - 1 && (
-                <motion.div
-                  className="hidden md:flex items-center justify-center w-8 mt-9 flex-shrink-0 text-teal-300"
-                  initial={{ opacity: 0, x: -10 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.15 + 0.3, duration: 0.4 }}
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </motion.div>
-              )}
-            </div>
+              number={step.number}
+              icon={step.icon}
+              title={step.title}
+              description={step.description}
+              index={index}
+              isLast={index === steps.length - 1}
+            />
           ))}
         </div>
       </div>

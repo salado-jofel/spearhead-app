@@ -1,8 +1,15 @@
 "use client";
 
-import Link from "next/link";
 import { motion } from "framer-motion";
 import { VIEWPORT, staggerContainer, fadeUp } from "@/components/ui/animations";
+import { FooterLink } from "../(components)/FooterLink";
+
+const navLinks = [
+  { label: "Product", href: "#product" },
+  { label: "Why Us", href: "#why-us" },
+  { label: "Demo", href: "#demo" },
+  { label: "Contact Scottie", href: "#sp-contact" },
+];
 
 export function Footer() {
   return (
@@ -15,7 +22,6 @@ export function Footer() {
           viewport={VIEWPORT}
           variants={staggerContainer}
         >
-          {/* Logo */}
           <motion.div
             variants={fadeUp}
             className="flex items-center gap-2 mb-3"
@@ -40,24 +46,16 @@ export function Footer() {
             Empowering independent reps with cutting-edge medical solutions.
           </motion.p>
 
-          {/* Nav Links */}
           <motion.div
             variants={fadeUp}
             className="flex items-center justify-center gap-8 mb-10"
           >
-            {[
-              { label: "Product", href: "#product" },
-              { label: "Why Us", href: "#why-us" },
-              { label: "Demo", href: "#demo" },
-              { label: "Contact Scottie", href: "#sp-contact" },
-            ].map((link) => (
-              <Link
+            {navLinks.map((link) => (
+              <FooterLink
                 key={link.label}
+                label={link.label}
                 href={link.href}
-                className="text-white/50 hover:text-teal-400 text-sm transition-colors"
-              >
-                {link.label}
-              </Link>
+              />
             ))}
           </motion.div>
 

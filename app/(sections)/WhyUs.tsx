@@ -1,8 +1,13 @@
 "use client";
 
-import { VIEWPORT, badgePop, fadeUp, staggerContainerSlow, scaleIn } from "@/components/ui/animations";
+import {
+  VIEWPORT,
+  badgePop,
+  fadeUp,
+  staggerContainerSlow,
+} from "@/components/ui/animations";
 import { motion } from "framer-motion";
-
+import { BenefitCard } from "../(components)/BenefitCard";
 
 const benefits = [
   {
@@ -162,7 +167,6 @@ export function WhyUs() {
       }}
     >
       <div className="max-w-7xl mx-auto px-6">
-        {/* Badge */}
         <motion.div
           className="flex justify-center mb-6"
           initial="hidden"
@@ -175,7 +179,6 @@ export function WhyUs() {
           </span>
         </motion.div>
 
-        {/* Heading */}
         <motion.div
           className="text-center mb-16"
           initial="hidden"
@@ -192,7 +195,6 @@ export function WhyUs() {
           </p>
         </motion.div>
 
-        {/* Cards Grid */}
         <motion.div
           className="grid md:grid-cols-2 lg:grid-cols-3 gap-5"
           initial="hidden"
@@ -201,39 +203,14 @@ export function WhyUs() {
           variants={staggerContainerSlow}
         >
           {benefits.map((benefit) => (
-            <motion.div
+            <BenefitCard
               key={benefit.title}
-              variants={scaleIn}
-              whileHover={{
-                y: -6,
-                transition: { duration: 0.25, ease: "easeOut" },
-              }}
-              className={`relative p-6 rounded-2xl border transition-colors cursor-default ${
-                benefit.highlight
-                  ? "bg-teal-500/20 border-teal-400/50 shadow-lg shadow-teal-900/30"
-                  : "bg-white/5 border-white/10 hover:border-white/25 hover:bg-white/8"
-              }`}
-            >
-              {benefit.highlight && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-teal-400 text-teal-950 text-xs font-bold tracking-widest uppercase px-3 py-1 rounded-full">
-                    Most Popular
-                  </span>
-                </div>
-              )}
-              <div className="w-10 h-10 rounded-lg bg-teal-500/20 text-teal-400 flex items-center justify-center mb-4">
-                {benefit.icon}
-              </div>
-              <h3 className="font-bold text-white text-lg mb-2">
-                {benefit.title}
-              </h3>
-              <p className="text-white/55 text-sm leading-relaxed mb-4">
-                {benefit.description}
-              </p>
-              <span className="inline-block bg-white/10 text-white/70 text-xs font-semibold tracking-wider uppercase px-3 py-1 rounded-full">
-                {benefit.badge}
-              </span>
-            </motion.div>
+              icon={benefit.icon}
+              title={benefit.title}
+              description={benefit.description}
+              badge={benefit.badge}
+              highlight={benefit.highlight}
+            />
           ))}
         </motion.div>
       </div>

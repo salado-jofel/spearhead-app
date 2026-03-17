@@ -13,7 +13,6 @@ export function Navbar() {
       variants={fadeDown}
     >
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-        {/* Logo */}
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-full border-2 border-teal-400 flex items-center justify-center">
             <span className="text-teal-400 text-xs font-bold">S</span>
@@ -28,7 +27,6 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* Nav Links */}
         <div className="hidden md:flex items-center gap-8 text-sm text-white/70">
           <Link
             href="#product"
@@ -53,7 +51,6 @@ export function Navbar() {
           </Link>
         </div>
 
-        {/* CTA Buttons */}
         <div className="flex items-center gap-3">
           <Link
             href="#sp-contact"
@@ -91,7 +88,7 @@ export function Navbar() {
                 d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
               />
             </svg>
-            Rep Portal
+            Portal
           </Link>
         </div>
       </div>

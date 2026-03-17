@@ -1,8 +1,13 @@
 "use client";
 
-import { VIEWPORT, badgePop, fadeUp, fadeLeft, fadeRight } from "@/components/ui/animations";
+import {
+  VIEWPORT,
+  badgePop,
+  fadeUp,
+  fadeLeft,
+} from "@/components/ui/animations";
 import { motion } from "framer-motion";
-
+import { FeatureCard } from "../(components)/FeatureCard";
 
 const features = [
   {
@@ -91,7 +96,6 @@ export function Product() {
   return (
     <section id="product" className="py-24 bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
-        {/* Badge */}
         <motion.div
           className="flex justify-center mb-6"
           initial="hidden"
@@ -104,7 +108,6 @@ export function Product() {
           </span>
         </motion.div>
 
-        {/* Heading */}
         <motion.div
           className="text-center mb-16"
           initial="hidden"
@@ -125,7 +128,6 @@ export function Product() {
         </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-center">
-          {/* Product Visual */}
           <motion.div
             className="flex flex-col items-center justify-center"
             initial="hidden"
@@ -139,7 +141,7 @@ export function Product() {
               transition={{ type: "spring", stiffness: 200, damping: 15 }}
             >
               <div className="w-44 h-44 rounded-full border border-teal-300/60 flex items-center justify-center bg-white">
-                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-teal-400 to-teal-600 flex items-center justify-center shadow-lg">
+                <div className="w-32 h-32 rounded-full bg-linear-to-br from-teal-400 to-teal-600 flex items-center justify-center shadow-lg">
                   <svg
                     className="w-14 h-14 text-white"
                     fill="none"
@@ -166,7 +168,6 @@ export function Product() {
             </motion.div>
           </motion.div>
 
-          {/* Feature Cards */}
           <motion.div
             className="flex flex-col gap-4"
             initial="hidden"
@@ -178,24 +179,12 @@ export function Product() {
             }}
           >
             {features.map((feature) => (
-              <motion.div
+              <FeatureCard
                 key={feature.title}
-                variants={fadeRight}
-                whileHover={{ x: 4, transition: { duration: 0.2 } }}
-                className="flex items-start gap-4 p-5 rounded-xl border border-gray-100 hover:border-teal-200 hover:shadow-sm bg-white transition-shadow cursor-default"
-              >
-                <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-teal-50 text-teal-500 flex items-center justify-center">
-                  {feature.icon}
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-1">
-                    {feature.title}
-                  </h3>
-                  <p className="text-gray-500 text-sm leading-relaxed">
-                    {feature.description}
-                  </p>
-                </div>
-              </motion.div>
+                icon={feature.icon}
+                title={feature.title}
+                description={feature.description}
+              />
             ))}
           </motion.div>
         </div>

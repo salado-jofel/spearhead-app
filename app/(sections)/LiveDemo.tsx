@@ -1,14 +1,22 @@
 "use client";
 
-import { VIEWPORT, badgePop, fadeLeft, staggerContainer, fadeUp, fadeRight } from "@/components/ui/animations";
+import {
+  VIEWPORT,
+  badgePop,
+  fadeUp,
+  fadeLeft,
+  fadeRight,
+  staggerContainer,
+} from "@/components/ui/animations";
 import { motion } from "framer-motion";
-
+import { DemoSessionRow } from "../(components)/DemoSessionRow";
+import { DemoTopicItem } from "../(components)/DemoTopicItem";
 
 const demoSessions = [
   { day: "Tuesday", time: "11:00 AM EST", status: "open" },
   { day: "Thursday", time: "2:00 PM EST", status: "open" },
   { day: "Friday", time: "10:00 AM EST", status: "limited" },
-];
+] satisfies { day: string; time: string; status: "open" | "limited" }[];
 
 const demoTopics = [
   "The science behind Non-Hydrolyzed Collagen",
@@ -29,7 +37,6 @@ export function LiveDemo() {
       }}
     >
       <div className="max-w-7xl mx-auto px-6">
-        {/* Badge */}
         <motion.div
           className="flex justify-center mb-10"
           initial="hidden"
@@ -43,7 +50,6 @@ export function LiveDemo() {
         </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-14 items-center">
-          {/* Left: Content */}
           <motion.div
             initial="hidden"
             whileInView="visible"
@@ -66,28 +72,7 @@ export function LiveDemo() {
               variants={staggerContainer}
             >
               {demoTopics.map((topic) => (
-                <motion.li
-                  key={topic}
-                  variants={fadeUp}
-                  className="flex items-center gap-3 text-white/75 text-sm"
-                >
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full bg-teal-500/30 border border-teal-400/50 flex items-center justify-center">
-                    <svg
-                      className="w-3 h-3 text-teal-400"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={3}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  </span>
-                  {topic}
-                </motion.li>
+                <DemoTopicItem key={topic} topic={topic} />
               ))}
             </motion.ul>
 
@@ -114,7 +99,6 @@ export function LiveDemo() {
             </motion.a>
           </motion.div>
 
-          {/* Right: Schedule Card */}
           <motion.div
             className="bg-white/8 backdrop-blur-sm border border-white/15 rounded-2xl p-6"
             initial="hidden"
@@ -140,30 +124,12 @@ export function LiveDemo() {
               }}
             >
               {demoSessions.map((session) => (
-                <motion.div
+                <DemoSessionRow
                   key={session.day}
-                  variants={fadeUp}
-                  whileHover={{ x: 4 }}
-                  className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 cursor-default"
-                >
-                  <div>
-                    <p className="text-white font-semibold text-sm">
-                      {session.day}
-                    </p>
-                    <p className="text-white/50 text-xs mt-0.5">
-                      {session.time}
-                    </p>
-                  </div>
-                  {session.status === "open" ? (
-                    <span className="bg-teal-500 text-white text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full">
-                      Spots Open
-                    </span>
-                  ) : (
-                    <span className="bg-orange-500 text-white text-xs font-bold uppercase tracking-wider px-3 py-1 rounded-full">
-                      2 Spots Left
-                    </span>
-                  )}
-                </motion.div>
+                  day={session.day}
+                  time={session.time}
+                  status={session.status}
+                />
               ))}
             </motion.div>
 
