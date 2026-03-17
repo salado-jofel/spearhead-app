@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
-import { signOut } from "../actions";
+import { signOut } from "../(services)/actions";
 
 export function SignOutButton() {
   return (
