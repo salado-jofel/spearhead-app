@@ -8,12 +8,14 @@ interface AuthFieldProps {
   id: string;
   name: string;
   label: string;
-  icon: ReactNode;
-  type: string;
-  placeholder: string;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  icon?: ReactNode;
+  type?: string;
+  placeholder?: string;
+  value?: string;
+  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   rightElement?: ReactNode;
+  height?: string;
+  required?: boolean;
 }
 
 export function AuthField({
@@ -21,11 +23,13 @@ export function AuthField({
   name,
   label,
   icon,
-  type,
+  type = "text",
   placeholder,
   value,
   onChange,
   rightElement,
+  height = "h-12",
+  required,
 }: AuthFieldProps) {
   return (
     <div className="space-y-2">
@@ -34,7 +38,7 @@ export function AuthField({
         className="flex items-center gap-2 text-sm font-medium"
         style={{ color: "rgba(255,255,255,0.7)" }}
       >
-        {icon}
+        {icon && icon}
         {label}
       </Label>
       <div className="relative">
@@ -43,10 +47,10 @@ export function AuthField({
           name={name}
           type={type}
           placeholder={placeholder}
-          required
-          value={value}
-          onChange={onChange}
-          className="h-12 text-white placeholder:text-white/25 focus-visible:ring-0 focus-visible:ring-offset-0"
+          required={required}
+          {...(value !== undefined && { value })}
+          {...(onChange !== undefined && { onChange })}
+          className={`${height} text-white placeholder:text-white/25 focus-visible:ring-0 focus-visible:ring-offset-0`}
           style={{
             background: "rgba(255,255,255,0.06)",
             border: "1px solid rgba(0,212,200,0.2)",

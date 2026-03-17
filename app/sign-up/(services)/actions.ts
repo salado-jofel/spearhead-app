@@ -3,12 +3,11 @@
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
-export async function signup(
+export async function signUp(
   prevState: unknown,
   formData: FormData,
 ): Promise<{ error: string } | undefined> {
   const supabase = await createClient();
-
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
   const firstName = formData.get("first_name") as string;
@@ -38,7 +37,6 @@ export async function signup(
   if (data.user && data.user.identities?.length === 0) {
     return { error: "An account with this email already exists." };
   }
-
 
   redirect("/verify-email");
 }
