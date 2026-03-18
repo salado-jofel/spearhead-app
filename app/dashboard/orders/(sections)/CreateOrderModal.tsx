@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,13 +10,18 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Plus, Hash, Building2, Package, DollarSign } from "lucide-react";
-import { addOrder, getActiveFacilities, getAllProducts } from "../actions";
+import {
+  addOrder,
+  getActiveFacilities,
+  getAllProducts,
+} from "../(services)/actions";
 import { useAppDispatch } from "@/store/hooks";
 import { addOrderToStore } from "../(redux)/orders-slice";
 import type { Order } from "@/app/(interfaces)/order";
 import type { Facility } from "@/app/(interfaces)/facility";
 import type { Product } from "@/app/(interfaces)/product";
 import SubmitButton from "@/app/(components)/SubmitButton";
+// ✅ Button from shadcn removed — both trigger and cancel now use SubmitButton
 
 export function CreateOrderModal() {
   const dispatch = useAppDispatch();
@@ -93,14 +97,22 @@ export function CreateOrderModal() {
         if (!isPending) setOpen(val);
       }}
     >
+      {/* ✅ Trigger: Button → SubmitButton (matches AddProductModal / AddFacilityModal pattern) */}
       <DialogTrigger asChild>
-        <Button className="bg-[#2db0b0] hover:bg-[#249191] text-white cursor-pointer w-full sm:w-auto">
-          <Plus className="w-4 h-4 mr-2" />
-          New Order
-        </Button>
+        <SubmitButton
+          type="button"
+          variant="default"
+          size="default"
+          classname="bg-[#2db0b0] hover:bg-[#249191] text-white cursor-pointer w-full sm:w-auto"
+          cta={
+            <>
+              <Plus className="w-4 h-4 mr-2" />
+              New Order
+            </>
+          }
+        />
       </DialogTrigger>
 
-      {/* max-h + overflow so form scrolls on very small screens */}
       <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md rounded-xl max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-lg font-semibold text-slate-800">
@@ -196,15 +208,16 @@ export function CreateOrderModal() {
 
           {/* Actions */}
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
-            <Button
+            {/* ✅ Cancel: Button → SubmitButton (matches AddProductModal pattern) */}
+            <SubmitButton
               type="button"
               variant="outline"
+              size="default"
               onClick={() => setOpen(false)}
-              className="text-slate-600 w-full sm:w-auto"
-              disabled={isPending}
-            >
-              Cancel
-            </Button>
+              isPending={isPending}
+              classname="text-slate-600 w-full sm:w-auto cursor-pointer"
+              cta={<span>Cancel</span>}
+            />
             <SubmitButton
               type="submit"
               isPending={isPending}
@@ -217,7 +230,7 @@ export function CreateOrderModal() {
               isPendingMesssage="Creating..."
               variant="default"
               size="default"
-              classname="bg-[#2db0b0] hover:bg-[#249191] text-white w-full sm:w-auto"
+              classname="bg-[#2db0b0] hover:bg-[#249191] text-white w-full sm:w-auto cursor-pointer"
             />
           </div>
         </form>

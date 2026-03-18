@@ -34,12 +34,12 @@ const navItems = [
     href: "/dashboard/orders",
     doctorHidden: false,
   },
-  {
-    icon: Building2,
-    label: "Facilities",
-    href: "/dashboard/facilities",
-    doctorHidden: true,
-  },
+  // {
+  //   icon: Building2,
+  //   label: "Facilities",
+  //   href: "/dashboard/facilities",
+  //   doctorHidden: true,
+  // },
   {
     icon: Package,
     label: "Products",
