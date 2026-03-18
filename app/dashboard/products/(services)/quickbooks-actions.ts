@@ -1,9 +1,10 @@
 "use server";
 
 import { createClient } from "@/utils/supabase/server";
-import { qbRequest, qbRequestOrThrow } from "@/utils/quickbooks/client";
-import { getValidAccessToken } from "@/utils/quickbooks/client";
+import { getValidQBClient } from "@/utils/quickbooks/client";
 import { requireUser } from "@/utils/auth-guard";
+
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface QBItem {
   Id?: string;
@@ -20,27 +21,29 @@ interface QBItemResponse {
   Item: QBItem & { Id: string; SyncToken: string };
 }
 
+// ── Shared helper ─────────────────────────────────────────────────────────────
+
+function getQBBaseUrl() {
+  return process.env.QB_ENVIRONMENT === "production"
+    ? "https://quickbooks.api.intuit.com"
+    : "https://sandbox-quickbooks.api.intuit.com";
+}
+
 // ── Income account ref ────────────────────────────────────────────────────────
 
 async function getIncomeAccountRef(): Promise<{
   value: string;
   name: string;
 } | null> {
-  const auth = await getValidAccessToken();
-  if (!auth) return null;
-
-  const QB_ENVIRONMENT = process.env.QB_ENVIRONMENT || "sandbox";
-  const QB_BASE_URL =
-    QB_ENVIRONMENT === "sandbox"
-      ? "https://sandbox-quickbooks.api.intuit.com"
-      : "https://quickbooks.api.intuit.com";
+  const client = await getValidQBClient();
+  const token = client.getToken();
 
   const query = `SELECT * FROM Account WHERE AccountType = 'Income' MAXRESULTS 1`;
-  const url = `${QB_BASE_URL}/v3/company/${auth.realmId}/query?query=${encodeURIComponent(query)}&minorversion=65`;
+  const url = `${getQBBaseUrl()}/v3/company/${token.realmId}/query?query=${encodeURIComponent(query)}&minorversion=65`;
 
   const response = await fetch(url, {
     headers: {
-      Authorization: `Bearer ${auth.accessToken}`,
+      Authorization: `Bearer ${token.access_token}`,
       Accept: "application/json",
     },
   });
@@ -57,7 +60,56 @@ async function getIncomeAccountRef(): Promise<{
   return { value: accounts[0].Id, name: accounts[0].Name };
 }
 
-// ── Create ────────────────────────────────────────────────────────────────────
+// ── QB fetch helpers ──────────────────────────────────────────────────────────
+
+async function qbGet<T>(path: string): Promise<T> {
+  const client = await getValidQBClient();
+  const token = client.getToken();
+
+  const response = await fetch(
+    `${getQBBaseUrl()}/v3/company/${token.realmId}${path}?minorversion=65`,
+    {
+      headers: {
+        Authorization: `Bearer ${token.access_token}`,
+        Accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`QB GET ${path} failed (${response.status}): ${errText}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+async function qbPost<T>(path: string, body: object): Promise<T> {
+  const client = await getValidQBClient();
+  const token = client.getToken();
+
+  const response = await fetch(
+    `${getQBBaseUrl()}/v3/company/${token.realmId}${path}?minorversion=65`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token.access_token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(body),
+    },
+  );
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`QB POST ${path} failed (${response.status}): ${errText}`);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+// ── Create QB Item ────────────────────────────────────────────────────────────
 
 export async function createQBItem(
   name: string,
@@ -68,7 +120,7 @@ export async function createQBItem(
     throw new Error("[createQBItem] No income account found in QuickBooks.");
   }
 
-  const res = await qbRequestOrThrow<QBItemResponse>("POST", "/item", {
+  const res = await qbPost<QBItemResponse>("/item", {
     Name: name,
     Description: name,
     UnitPrice: price,
@@ -83,16 +135,13 @@ export async function createQBItem(
 
   return res.Item.Id;
 }
-// ── Deactivate ────────────────────────────────────────────────────────────────
+
+// ── Deactivate QB Item ────────────────────────────────────────────────────────
 
 export async function deactivateQBItem(qbItemId: string): Promise<void> {
-  // Fetch current SyncToken
-  const existing = await qbRequestOrThrow<QBItemResponse>(
-    "GET",
-    `/item/${qbItemId}`,
-  );
+  const existing = await qbGet<QBItemResponse>(`/item/${qbItemId}`);
 
-  await qbRequestOrThrow<QBItemResponse>("POST", "/item", {
+  await qbPost<QBItemResponse>("/item", {
     Id: qbItemId,
     SyncToken: existing.Item.SyncToken,
     Name: existing.Item.Name,
@@ -103,23 +152,21 @@ export async function deactivateQBItem(qbItemId: string): Promise<void> {
   });
 }
 
-// ── Reactivate ────────────────────────────────────────────────────────────────
+// ── Reactivate QB Item ────────────────────────────────────────────────────────
 
 export async function reactivateQBItem(
   qbItemId: string,
   name: string,
   price: number,
 ): Promise<void> {
-  const existing = await qbRequestOrThrow<QBItemResponse>(
-    "GET",
-    `/item/${qbItemId}`,
-  );
+  const existing = await qbGet<QBItemResponse>(`/item/${qbItemId}`);
 
   const incomeAccountRef = await getIncomeAccountRef();
-  if (!incomeAccountRef)
-    throw new Error("No income account found for reactivation.");
+  if (!incomeAccountRef) {
+    throw new Error("[reactivateQBItem] No income account found.");
+  }
 
-  await qbRequestOrThrow<QBItemResponse>("POST", "/item", {
+  await qbPost<QBItemResponse>("/item", {
     Id: qbItemId,
     SyncToken: existing.Item.SyncToken,
     Name: name,
@@ -131,9 +178,7 @@ export async function reactivateQBItem(
   });
 }
 
-// ── Sync single product ───────────────────────────────────────────────────────
-// Accepts optional override payload so editProduct can pass new values
-// before the DB is updated (same pattern as facility's updateQBCustomer)
+// ── Sync single product to QB ─────────────────────────────────────────────────
 
 export async function syncProductToQuickBooks(
   productId: string,
@@ -148,8 +193,9 @@ export async function syncProductToQuickBooks(
       .eq("id", productId)
       .single();
 
-    if (error || !product)
+    if (error || !product) {
       return { success: false, message: "Product not found" };
+    }
 
     const name = override?.name ?? product.name;
     const price = override?.price ?? parseFloat(product.price) ?? 0;
@@ -174,39 +220,38 @@ export async function syncProductToQuickBooks(
     let qbItemId: string;
 
     if (product.qb_item_id) {
-      // Update existing
-      const existing = await qbRequest<QBItemResponse>(
-        "GET",
+      // ── Update existing item ────────────────────────────────────────────
+      const existing = await qbGet<QBItemResponse>(
         `/item/${product.qb_item_id}`,
       );
+
       if (!existing?.Item?.SyncToken) {
         return { success: false, message: "Failed to fetch existing QB item" };
       }
 
-      const updated = await qbRequest<QBItemResponse>("POST", "/item", {
+      const updated = await qbPost<QBItemResponse>("/item", {
         ...itemPayload,
         Id: product.qb_item_id,
         SyncToken: existing.Item.SyncToken,
       });
+
       if (!updated?.Item?.Id) {
         return { success: false, message: "Failed to update QB item" };
       }
 
       qbItemId = updated.Item.Id;
     } else {
-      // Create new
-      const created = await qbRequest<QBItemResponse>(
-        "POST",
-        "/item",
-        itemPayload,
-      );
+      // ── Create new item ─────────────────────────────────────────────────
+      const created = await qbPost<QBItemResponse>("/item", itemPayload);
+
       if (!created?.Item?.Id) {
         return { success: false, message: "Failed to create QB item" };
       }
+
       qbItemId = created.Item.Id;
     }
 
-    // Update DB sync metadata
+    // ── Save QB item ID back to DB ────────────────────────────────────────
     await supabase
       .from("products")
       .update({
@@ -228,7 +273,7 @@ export async function syncProductToQuickBooks(
   }
 }
 
-// ── Sync ALL products ─────────────────────────────────────────────────────────
+// ── Sync ALL products to QB ───────────────────────────────────────────────────
 
 export async function syncAllProductsToQuickBooks(): Promise<{
   success: number;
