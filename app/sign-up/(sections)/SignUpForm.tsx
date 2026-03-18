@@ -50,8 +50,7 @@ const roles: { value: Role; icon: React.ReactNode; label: string }[] = [
 export default function SignUpForm() {
   const [state, formAction, isPending] = useActionState(signUp, initialState);
   const [role, setRole] = useState<Role>("sales_representative");
-
-
+  const [hasAgreed, setHasAgreed] = useState(false);
 
   return (
     <div className="w-full max-w-md select-none rounded-2xl border p-8 md:p-10 bg-white/5 backdrop-blur-2xl border-[#00d4c8]/15 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)]">
@@ -148,13 +147,80 @@ export default function SignUpForm() {
 
         {state?.error && <ErrorAlert errorMessage={state.error} />}
 
+        {/* ── Terms & Privacy Agreement ─────────────────────────────────── */}
+        <label className="flex items-start gap-3 cursor-pointer group">
+          <div className="relative mt-0.5 shrink-0">
+            <input
+              type="checkbox"
+              checked={hasAgreed}
+              onChange={(e) => setHasAgreed(e.target.checked)}
+              className="peer sr-only"
+              required
+            />
+            <div
+              className={`w-4 h-4 rounded border transition-all flex items-center justify-center ${
+                hasAgreed
+                  ? "border-[#00d4c8] bg-[#00d4c8]"
+                  : "border-white/20 bg-white/5 group-hover:border-[#00d4c8]/50"
+              }`}
+            >
+              {hasAgreed && (
+                <svg
+                  className="w-2.5 h-2.5 text-white"
+                  viewBox="0 0 10 8"
+                  fill="none"
+                >
+                  <path
+                    d="M1 4l3 3 5-6"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              )}
+            </div>
+          </div>
+          <span
+            className="text-xs leading-relaxed"
+            style={{ color: "rgba(255,255,255,0.45)" }}
+          >
+            I have read and agree to the{" "}
+            <Link
+              href="/eula"
+              target="_blank"
+              onClick={(e) => e.stopPropagation()}
+              className="font-medium underline underline-offset-2 transition-colors"
+              style={{ color: "#00d4c8" }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#5ee8e2")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#00d4c8")}
+            >
+              Terms of Use
+            </Link>{" "}
+            and{" "}
+            <Link
+              href="/privacy-policy"
+              target="_blank"
+              onClick={(e) => e.stopPropagation()}
+              className="font-medium underline underline-offset-2 transition-colors"
+              style={{ color: "#00d4c8" }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#5ee8e2")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#00d4c8")}
+            >
+              Privacy Policy
+            </Link>
+          </span>
+        </label>
+
         <SubmitButton
           classname="w-full h-12 font-bold text-white transition-all active:scale-95 mt-2"
           style={{
             background: "linear-gradient(135deg, #00d4c8, #00a89e)",
             boxShadow: "0 4px 15px rgba(0,212,200,0.3)",
+            ...(!hasAgreed && { opacity: 0.5, cursor: "not-allowed" }),
           }}
           isPending={isPending}
+          disabled={!hasAgreed}
           type="submit"
           cta="Create Account"
           variant="default"
