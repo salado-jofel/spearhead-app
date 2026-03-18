@@ -2,7 +2,7 @@
 
 import { useAppSelector } from "@/store/hooks";
 import { useMemo } from "react";
-import { StatusBadge } from "../(components)/StatusBadge";
+import { StatusBadge } from "../../(components)/StatusBadge";
 import { TableCard } from "@/app/(components)/TableCard";
 import { DataTable } from "@/app/(components)/DataTable";
 import { OrderMobileCard } from "@/app/(components)/OrderMobileCard";

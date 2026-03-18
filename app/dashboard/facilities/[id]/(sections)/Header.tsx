@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import ConfirmModal from "@/app/(components)/ConfirmModal";
 import { deleteFacility } from "../actions";
 import { clearFacility } from "../(redux)/facility-slice";
-import { StatusBadge } from "../../../(components)/StatusBadge";
+import { StatusBadge } from "../../../../(components)/StatusBadge";
 
 export default function Header() {
   const router = useRouter();

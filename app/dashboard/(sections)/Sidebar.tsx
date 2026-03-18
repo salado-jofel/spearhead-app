@@ -9,15 +9,17 @@ import {
   Megaphone,
   ScrollText,
   BookOpen,
+  LogOut,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { SignOutButton } from "../(components)/SignOutButton";
-import { useSidebar } from "../(components)/SidebarContext";
-import { useAppSelector } from "@/store/hooks";
+import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { NavItem } from "@/app/(components)/NavItem";
 import { SidebarUserCard } from "@/app/(components)/SidebarUserCard";
 import { SpearheadBrand } from "@/app/(components)/SpearheadBrand";
+import SubmitButton from "@/app/(components)/SubmitButton";
+import { signOut } from "../(services)/actions";
+import { closeSidebar } from "../(redux)/dashboard-slice";
 
 const navItems = [
   {
@@ -72,13 +74,14 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { isOpen, close } = useSidebar();
+  const dispatch = useAppDispatch();
+  const isOpen = useAppSelector((state) => state.dashboard.isSidebarOpen);
   const userData = useAppSelector((state) => state.dashboard);
   const isDoctor = userData.role === "doctor";
 
   useEffect(() => {
-    close();
-  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+    dispatch(closeSidebar());
+  }, [pathname]); 
 
   return (
     <>
@@ -88,7 +91,7 @@ export function Sidebar() {
           transition-opacity duration-300
           ${isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}
         `}
-        onClick={close}
+        onClick={() => dispatch(closeSidebar())}
         aria-hidden="true"
       />
 
@@ -132,7 +135,19 @@ export function Sidebar() {
             initials={userData.initials}
             role={userData.role}
           />
-          <SignOutButton />
+          <SubmitButton
+            type="button"
+            variant="ghost"
+            size="lg"
+            onClick={() => signOut()}
+            classname="flex items-center gap-2 text-white bg-red-500 transition-colors w-full hover:text-red-500 hover:border-red-500"
+            cta={
+              <>
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </>
+            }
+          />
         </div>
       </aside>
     </>

@@ -1,6 +1,6 @@
 import { formatDate, formatAmount } from "@/utils/formatter";
 import { Order } from "@/app/(interfaces)/order";
-import { StatusBadge } from "../dashboard/(components)/StatusBadge";
+import { StatusBadge } from "./StatusBadge";
 
 interface OrderMobileCardProps {
   order: Order;
