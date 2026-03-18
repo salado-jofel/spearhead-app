@@ -1,6 +1,7 @@
-import { getTrainingMaterials } from "./actions";
+import { getTrainingMaterials } from "./(services)/actions";
 import Providers from "./(sections)/Providers";
 import TrainingCards from "./(sections)/TrainingCards";
+import { DashboardHeader } from "@/app/(components)/DashboardHeader";
 
 export default async function TrainingsPage() {
   const trainings = await getTrainingMaterials();
@@ -8,14 +9,10 @@ export default async function TrainingsPage() {
   return (
     <Providers trainings={trainings}>
       <div className="p-4 md:p-8 mx-auto space-y-6">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
-            Trainings
-          </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Your training documents & resources
-          </p>
-        </div>
+        <DashboardHeader
+          title="Trainings"
+          description="Your training documents & resources"
+        />
         <TrainingCards />
       </div>
     </Providers>

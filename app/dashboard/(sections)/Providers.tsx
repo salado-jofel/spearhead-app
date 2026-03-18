@@ -6,7 +6,7 @@ import { setFacilities } from "@/app/dashboard/facilities/(redux)/facilities-sli
 import { setOrders } from "@/app/dashboard/orders/(redux)/orders-slice";
 import type { Facility } from "@/app/(interfaces)/facility";
 import type { Order } from "@/app/(interfaces)/order";
-import { UserData } from "../actions";
+import { UserData } from "../(services)/actions";
 import { setUser } from "../(redux)/dashboard-slice";
 
 interface DashboardProvidersProps {

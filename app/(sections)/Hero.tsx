@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { fadeUp, staggerContainer } from "@/components/ui/animations";
+import { AnimatedStat } from "../(components)/AnimateStat";
 
-// ✅ Static dot positions — no Math.random(), no hydration mismatch
 const DOTS = [
   { top: "8%", left: "12%" },
   { top: "15%", left: "72%" },
@@ -21,49 +20,6 @@ const DOTS = [
   { top: "5%", left: "50%" },
 ];
 
-function AnimatedStat({
-  target,
-  suffix,
-  label,
-}: {
-  target: number;
-  suffix: string;
-  label: string;
-}) {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    let start = 0;
-    const duration = 2000;
-    const step = Math.ceil(target / (duration / 16));
-    const timer = setInterval(() => {
-      start += step;
-      if (start >= target) {
-        setCount(target);
-        clearInterval(timer);
-      } else {
-        setCount(start);
-      }
-    }, 16);
-    return () => clearInterval(timer);
-  }, [target]);
-
-  return (
-    <motion.div
-      variants={fadeUp}
-      className="flex flex-col items-center px-6 py-4"
-    >
-      <span className="text-3xl font-bold text-white">
-        {count}
-        <span className="text-teal-400">{suffix}</span>
-      </span>
-      <span className="text-white/50 text-xs tracking-widest uppercase mt-1">
-        {label}
-      </span>
-    </motion.div>
-  );
-}
-
 export function Hero() {
   return (
     <section
@@ -74,7 +30,6 @@ export function Hero() {
           "radial-gradient(ellipse at top, #0d5a6a 0%, #0a3040 40%, #061d28 100%)",
       }}
     >
-      {/* ✅ Decorative dots — static positions */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {DOTS.map((pos, i) => (
           <div
@@ -86,7 +41,6 @@ export function Hero() {
       </div>
 
       <div className="relative z-10 max-w-3xl mx-auto">
-        {/* Headline */}
         <motion.h1
           className="text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight mb-6"
           initial="hidden"
@@ -98,7 +52,6 @@ export function Hero() {
           <span className="text-teal-400">Medical Sales</span> Is Here.
         </motion.h1>
 
-        {/* Subtext */}
         <motion.p
           className="text-white/70 text-lg max-w-xl mx-auto mb-10 leading-relaxed"
           initial="hidden"
@@ -114,7 +67,6 @@ export function Hero() {
           product — a clinically differentiated solution that sells itself.
         </motion.p>
 
-        {/* Buttons */}
         <motion.div
           className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16"
           initial="hidden"
@@ -168,7 +120,6 @@ export function Hero() {
           </Link>
         </motion.div>
 
-        {/* Stats */}
         <motion.div
           className="bg-white/10 backdrop-blur-sm border border-white/15 rounded-2xl divide-x divide-white/15 flex flex-col sm:flex-row overflow-hidden"
           initial="hidden"

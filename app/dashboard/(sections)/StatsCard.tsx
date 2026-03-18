@@ -1,30 +1,9 @@
 "use client";
 
+import { StatCard } from "@/app/(components)/StatCard";
 import { Building2, ShoppingCart, DollarSign, RefreshCw } from "lucide-react";
 
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-}: {
-  label: string;
-  value: string | number;
-  icon: React.ElementType;
-}) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-xl p-5 flex items-start justify-between shadow-sm">
-      <div>
-        <p className="text-xs text-slate-400 font-medium mb-2">{label}</p>
-        <p className="text-2xl font-bold text-slate-800">{value}</p>
-      </div>
-      <div className="p-2.5 bg-teal-50 rounded-lg">
-        <Icon className="w-5 h-5 text-[#2db0b0]" />
-      </div>
-    </div>
-  );
-}
-
-interface Props {
+interface StatsCardsProps {
   totalFacilities: number;
   totalOrders: number;
   totalRevenue: number;
@@ -36,7 +15,7 @@ export default function StatsCards({
   totalOrders,
   totalRevenue,
   activeOrders,
-}: Props) {
+}: StatsCardsProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard

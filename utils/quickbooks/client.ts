@@ -4,6 +4,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { QB_CONFIG } from "@/utils/quickbooks/config";
+import OAuthClient from "intuit-oauth";
 
 // ── Get valid access token (refresh if expired) ───────────────────────────────
 
@@ -159,4 +160,68 @@ export async function qbRequestOrThrow<T>(
     throw new Error(`QB request failed: ${method} ${path}`);
   }
   return result;
+}
+
+
+// ── Bare client — just config, no token ──────────────────────────────────────
+export function createQBClient() {
+  return new OAuthClient({
+    clientId: process.env.QB_CLIENT_ID!,
+    clientSecret: process.env.QB_CLIENT_SECRET!,
+    environment: process.env.QB_ENVIRONMENT as "sandbox" | "production",
+    redirectUri: process.env.QB_REDIRECT_URI!,
+  });
+}
+
+// ── Validated client — reads token from DB, refreshes if expired ─────────────
+export async function getValidQBClient() {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("QB_NOT_AUTHENTICATED");
+
+  const { data: connection, error } = await supabase
+    .from("quickbooks_connections")
+    .select("access_token, refresh_token, realm_id, access_token_expires_at")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (error || !connection) throw new Error("QB_NOT_CONNECTED");
+
+  const client = createQBClient();
+  client.setToken({
+    access_token: connection.access_token,
+    refresh_token: connection.refresh_token,
+    realmId: connection.realm_id,
+    token_type: "bearer",
+    expires_in: 3600,
+    x_refresh_token_expires_in: 8726400,
+  });
+
+  // Use DB expiry — more reliable than SDK's internal clock
+  const isValid = new Date(connection.access_token_expires_at) > new Date();
+  if (isValid) return client;
+
+  // Access token expired — try refresh
+  try {
+    await client.refresh();
+    const newToken = client.getToken();
+    const now = new Date();
+
+    // Save refreshed tokens back to DB
+    await supabase
+      .from("quickbooks_connections")
+      .update({
+        access_token: newToken.access_token,
+        refresh_token: newToken.refresh_token,
+        access_token_expires_at: new Date(now.getTime() + 3600 * 1000).toISOString(),
+        refresh_token_expires_at: new Date(now.getTime() + 8726400 * 1000).toISOString(),
+        updated_at: now.toISOString(),
+      })
+      .eq("user_id", user.id);
+
+    return client;
+  } catch {
+    throw new Error("QB_TOKEN_EXPIRED");
+  }
 }

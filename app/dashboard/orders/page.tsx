@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { getAllOrders } from "./actions";
+import { getAllOrders } from "./(services)/actions";
 import Providers from "./(sections)/Providers";
 import Header from "./(sections)/Header";
 import KanbanBoard from "./(sections)/KanBoard";

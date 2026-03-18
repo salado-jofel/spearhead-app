@@ -3,288 +3,200 @@
 import { useState, useMemo } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import {
-  addProductToStore,
   updateProductInStore,
   removeProductFromStore,
+  setSearch,
 } from "../(redux)/products-slice";
-import { addProduct, editProduct, deleteProduct } from "../actions";
+import { editProduct, deleteProduct } from "../(services)/actions";
 import type { Product } from "@/app/(interfaces)/product";
-import { Button } from "@/components/ui/button";
+import type { TableColumn } from "@/app/(interfaces)/table-column";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import SubmitButton from "@/app/(components)/SubmitButton";
 import ConfirmModal from "@/app/(components)/ConfirmModal";
-import {
-  Package,
-  Trash2,
-  Pencil,
-  X,
-  Check,
-  Plus,
-  DollarSign,
-  CheckCircle2,
-  XCircle,
-} from "lucide-react";
+import { EmptyState } from "@/app/(components)/EmptyState";
+import { QBSyncBadge } from "@/app/(components)/QBSyncBadge";
+import { NotSyncedBadge } from "@/app/(components)/NotSyncBadge";
+import { TableToolbar } from "@/app/(components)/TableToolbar";
+import { DataTable } from "@/app/(components)/DataTable";
+import { AddProductModal } from "./AddProductModal";
+import { ProductCard } from "./ProductCard";
+import { Package, Trash2, Pencil, X, Check } from "lucide-react";
 
-// ─── Add Product Modal ────────────────────────────────────────────────────────
-function AddProductModal() {
+type RowEdit = { name: string; price: string };
+
+export default function ProductsTable() {
   const dispatch = useAppDispatch();
-  const [open, setOpen] = useState<boolean>(false);
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const items = useAppSelector((state) => state.products.items);
+  const search = useAppSelector((state) => state.products.search);
+  const [editingRows, setEditingRows] = useState<Record<string, RowEdit>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setIsSubmitting(true);
-    try {
-      const formData = new FormData(e.currentTarget);
-      const created: Product = await addProduct(formData);
-      dispatch(addProductToStore(created));
-      setOpen(false);
-    } catch (err) {
-      console.error("[AddProductModal] Error:", err);
-    } finally {
-      setIsSubmitting(false);
-    }
+  const filtered: Product[] = useMemo(
+    () =>
+      items.filter(
+        (p: Product) =>
+          search === "" || p.name?.toLowerCase().includes(search.toLowerCase()),
+      ),
+    [items, search],
+  );
+
+  function startEditing(product: Product) {
+    setEditingRows((prev) => ({
+      ...prev,
+      [product.id!]: { name: product.name, price: String(product.price) },
+    }));
   }
 
-  return (
-    <Dialog
-      open={open}
-      onOpenChange={(val) => {
-        if (!isSubmitting) setOpen(val);
-      }}
-    >
-      <DialogTrigger asChild>
-        <Button className="bg-[#2db0b0] hover:bg-[#249191] text-white cursor-pointer">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Product
-        </Button>
-      </DialogTrigger>
+  function cancelEditing(id: string) {
+    setEditingRows((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }
 
-      <DialogContent className="w-[calc(100%-2rem)] sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-semibold text-slate-800">
-            Add New Product
-          </DialogTitle>
-        </DialogHeader>
+  function updateField(id: string, field: keyof RowEdit, value: string) {
+    setEditingRows((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], [field]: value },
+    }));
+  }
 
-        <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-              <Package className="w-4 h-4 text-[#2db0b0]" />
-              Product Name
-            </label>
-            <Input
-              name="name"
-              placeholder="e.g. Paracetamol 500mg"
-              required
-              disabled={isSubmitting}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
-              <DollarSign className="w-4 h-4 text-[#2db0b0]" />
-              Price
-            </label>
-            <Input
-              name="price"
-              type="number"
-              min="0"
-              step="0.01"
-              placeholder="e.g. 99.00"
-              required
-              disabled={isSubmitting}
-            />
-          </div>
-
-          <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={isSubmitting}
-              className="w-full sm:w-auto text-slate-600 cursor-pointer"
-            >
-              Cancel
-            </Button>
-            <SubmitButton
-              type="submit"
-              isPending={isSubmitting}
-              cta={
-                <>
-                  <Plus className="w-4 h-4 mr-1.5" />
-                  Add Product
-                </>
-              }
-              isPendingMesssage="Saving..."
-              variant="default"
-              size="default"
-              classname="w-full sm:w-auto bg-[#2db0b0] hover:bg-[#249191] text-white cursor-pointer"
-            />
-          </div>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ─── Product Row (desktop table) ──────────────────────────────────────────────
-function ProductRow({ product }: { product: Product }) {
-  const dispatch = useAppDispatch();
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [name, setName] = useState<string>(product.name);
-  const [price, setPrice] = useState<string>(String(product.price));
-  const [isSaving, setIsSaving] = useState(false);
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  async function handleSave() {
-    if (!product.id) return;
-    setIsSaving(true);
+  async function handleSave(product: Product) {
+    const edit = editingRows[product.id!];
+    if (!edit || !product.id) return;
+    setSavingId(product.id);
     try {
       const formData = new FormData();
-      formData.set("name", name);
-      formData.set("price", price);
+      formData.set("name", edit.name);
+      formData.set("price", edit.price);
       await editProduct(product.id, formData);
       dispatch(
         updateProductInStore({
           ...product,
-          name,
-          price: parseFloat(price) || 0,
+          name: edit.name,
+          price: parseFloat(edit.price) || 0,
         }),
       );
-      setIsEditing(false);
+      cancelEditing(product.id);
     } finally {
-      setIsSaving(false);
+      setSavingId(null);
     }
   }
 
-  async function handleConfirmDelete() {
-    if (!product.id) return;
-    setIsDeleting(true);
+  async function handleDelete() {
+    if (!confirmId) return;
+    setDeletingId(confirmId);
     try {
-      await deleteProduct(product.id);
-      dispatch(removeProductFromStore(product.id));
-      setConfirmOpen(false);
+      await deleteProduct(confirmId);
+      dispatch(removeProductFromStore(confirmId));
+      setConfirmId(null);
     } finally {
-      setIsDeleting(false);
+      setDeletingId(null);
     }
   }
 
-  function handleCancel() {
-    setName(product.name);
-    setPrice(String(product.price));
-    setIsEditing(false);
-  }
-
-  return (
-    <>
-      <ConfirmModal
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
-        title="Delete Product?"
-        description={`"${product.name}" will be permanently removed. This action cannot be undone.`}
-        confirmLabel="Delete"
-        isLoading={isDeleting}
-        onConfirm={handleConfirmDelete}
-      />
-
-      <tr className="hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0">
-        <td className="px-4 py-3">
-          {isEditing ? (
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="h-8 text-sm"
-              disabled={isSaving}
-            />
-          ) : (
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[#2db0b0]/10 flex items-center justify-center shrink-0">
-                <Package className="w-4 h-4 text-[#2db0b0]" />
-              </div>
-              <span className="text-slate-700 font-medium text-sm">
-                {product.name}
-              </span>
+  const columns: TableColumn<Product>[] = [
+    {
+      key: "name",
+      label: "Name",
+      render: (product) => {
+        const edit = editingRows[product.id!];
+        const saving = savingId === product.id;
+        return edit ? (
+          <Input
+            value={edit.name}
+            onChange={(e) => updateField(product.id!, "name", e.target.value)}
+            className="h-8 text-sm"
+            disabled={saving}
+          />
+        ) : (
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#2db0b0]/10 flex items-center justify-center shrink-0">
+              <Package className="w-4 h-4 text-[#2db0b0]" />
             </div>
-          )}
-        </td>
-
-        <td className="px-4 py-3">
-          {isEditing ? (
-            <Input
-              value={price}
-              type="number"
-              min="0"
-              step="0.01"
-              onChange={(e) => setPrice(e.target.value)}
-              className="h-8 text-sm w-32"
-              disabled={isSaving}
-            />
-          ) : (
             <span className="text-slate-700 font-medium text-sm">
-              ${Number(product.price).toFixed(2)}
+              {product.name}
             </span>
-          )}
-        </td>
-
-        <td className="px-4 py-3 text-slate-400 text-sm">
-          {product.created_at
-            ? new Date(product.created_at).toLocaleDateString("en-PH", {
-                year: "numeric",
-                month: "short",
-                day: "numeric",
-              })
-            : "—"}
-        </td>
-
-        <td className="px-4 py-3">
-          {product.qb_item_id ? (
-            <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              QB Synced
-              {product.qb_synced_at && (
-                <span className="text-slate-400 font-normal">
-                  ·{" "}
-                  {new Date(product.qb_synced_at).toLocaleDateString("en-US", {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </span>
-              )}
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 text-xs text-slate-400">
-              <XCircle className="w-3.5 h-3.5" />
-              Not Synced
-            </span>
-          )}
-        </td>
-
-        <td className="px-4 py-3">
-          <div className="flex items-center gap-1">
+          </div>
+        );
+      },
+    },
+    {
+      key: "price",
+      label: "Price",
+      render: (product) => {
+        const edit = editingRows[product.id!];
+        const saving = savingId === product.id;
+        return edit ? (
+          <Input
+            value={edit.price}
+            type="number"
+            min="0"
+            step="0.01"
+            onChange={(e) => updateField(product.id!, "price", e.target.value)}
+            className="h-8 text-sm w-32"
+            disabled={saving}
+          />
+        ) : (
+          <span className="text-slate-700 font-medium text-sm">
+            ${Number(product.price).toFixed(2)}
+          </span>
+        );
+      },
+    },
+    {
+      key: "created_at",
+      label: "Date Added",
+      cellClassName: "text-slate-400",
+      render: (product) =>
+        product.created_at
+          ? new Date(product.created_at).toLocaleDateString("en-PH", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            })
+          : "—",
+    },
+    {
+      key: "qb_item_id",
+      label: "QuickBooks",
+      render: (product) =>
+        product.qb_item_id ? (
+          <QBSyncBadge syncedAt={product.qb_synced_at} />
+        ) : (
+          <NotSyncedBadge />
+        ),
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      render: (product) => {
+        const isEditing = !!editingRows[product.id!];
+        const saving = savingId === product.id;
+        const deleting = deletingId === product.id;
+        return (
+          // stopPropagation keeps DataTable's onRowClick (if ever added) from firing
+          <div
+            className="flex items-center gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
             {isEditing ? (
               <>
                 <button
                   type="button"
-                  onClick={handleCancel}
-                  disabled={isSaving}
+                  onClick={() => cancelEditing(product.id!)}
+                  disabled={saving}
                   className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors rounded disabled:opacity-40 cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
                 <SubmitButton
                   type="button"
-                  onClick={handleSave}
-                  isPending={isSaving}
+                  onClick={() => handleSave(product)}
+                  isPending={saving}
                   cta={<Check className="w-4 h-4" />}
                   isPendingMesssage=""
                   variant="ghost"
@@ -296,16 +208,16 @@ function ProductRow({ product }: { product: Product }) {
               <>
                 <button
                   type="button"
-                  onClick={() => setIsEditing(true)}
-                  disabled={isDeleting}
+                  onClick={() => startEditing(product)}
+                  disabled={deleting}
                   className="p-1.5 text-slate-300 hover:text-[#2db0b0] transition-colors rounded disabled:opacity-40 cursor-pointer"
                 >
                   <Pencil className="w-4 h-4" />
                 </button>
                 <button
                   type="button"
-                  onClick={() => setConfirmOpen(true)}
-                  disabled={isDeleting}
+                  onClick={() => setConfirmId(product.id!)}
+                  disabled={deleting}
                   className="p-1.5 text-slate-300 hover:text-red-500 transition-colors rounded disabled:opacity-40 cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -313,200 +225,83 @@ function ProductRow({ product }: { product: Product }) {
               </>
             )}
           </div>
-        </td>
-      </tr>
-    </>
-  );
-}
+        );
+      },
+    },
+  ];
 
-// ─── Product Card (mobile) ────────────────────────────────────────────────────
-function ProductCard({ product }: { product: Product }) {
-  const dispatch = useAppDispatch();
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [name, setName] = useState(product.name);
-  const [price, setPrice] = useState(String(product.price));
-  const [isSaving, setIsSaving] = useState(false);
-
-  async function handleSave() {
-    if (!product.id) return;
-    setIsSaving(true);
-    try {
-      const formData = new FormData();
-      formData.set("name", name);
-      formData.set("price", price);
-      await editProduct(product.id, formData);
-      dispatch(
-        updateProductInStore({
-          ...product,
-          name,
-          price: parseFloat(price) || 0,
-        }),
-      );
-      setIsEditing(false);
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
-  async function handleConfirmDelete() {
-    if (!product.id) return;
-    setIsDeleting(true);
-    try {
-      await deleteProduct(product.id);
-      dispatch(removeProductFromStore(product.id));
-      setConfirmOpen(false);
-    } finally {
-      setIsDeleting(false);
-    }
-  }
+  const confirmingProduct = items.find((p) => p.id === confirmId);
 
   return (
     <>
       <ConfirmModal
-        open={confirmOpen}
-        onOpenChange={setConfirmOpen}
+        open={!!confirmId}
+        onOpenChange={(open) => {
+          if (!deletingId && !open) setConfirmId(null);
+        }}
         title="Delete Product?"
-        description={`"${product.name}" will be permanently removed. This action cannot be undone.`}
+        description={`"${confirmingProduct?.name}" will be permanently removed. This action cannot be undone.`}
         confirmLabel="Delete"
-        isLoading={isDeleting}
-        onConfirm={handleConfirmDelete}
+        isLoading={!!deletingId}
+        onConfirm={handleDelete}
       />
 
-      <div className="p-4 border-b border-slate-100 last:border-0">
-        <div className="flex items-start justify-between gap-3">
-          {/* Left: icon + name + meta */}
-          <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className="w-9 h-9 rounded-lg bg-[#2db0b0]/10 flex items-center justify-center shrink-0 mt-0.5">
-              <Package className="w-4 h-4 text-[#2db0b0]" />
-            </div>
-            <div className="flex-1 min-w-0 space-y-1">
-              {isEditing ? (
-                <Input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="h-8 text-sm"
-                  disabled={isSaving}
-                />
-              ) : (
-                <p className="text-sm font-semibold text-slate-800 truncate">
-                  {product.name}
-                </p>
-              )}
-              <div className="flex items-center gap-2 flex-wrap">
-                {isEditing ? (
-                  <Input
-                    value={price}
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    onChange={(e) => setPrice(e.target.value)}
-                    className="h-7 text-sm w-28"
-                    disabled={isSaving}
-                  />
-                ) : (
-                  <span className="text-sm font-medium text-[#2db0b0]">
-                    ${Number(product.price).toFixed(2)}
-                  </span>
-                )}
-                <span className="text-xs text-slate-400">
-                  {product.created_at
-                    ? new Date(product.created_at).toLocaleDateString("en-PH", {
-                        year: "numeric",
-                        month: "short",
-                        day: "numeric",
-                      })
-                    : "—"}
-                </span>
-              </div>
-              {/* QB status */}
-              <div>
-                {product.qb_item_id ? (
-                  <span className="inline-flex items-center gap-1 text-xs text-emerald-600 font-medium">
-                    <CheckCircle2 className="w-3 h-3" /> QB Synced
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-xs text-slate-400">
-                    <XCircle className="w-3 h-3" /> Not Synced
-                  </span>
-                )}
-              </div>
-            </div>
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col h-[calc(100vh-172px)] md:h-[calc(100vh-219px)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-100 bg-slate-50/60 shrink-0">
+          <div className="space-y-0.5">
+            <h2 className="text-sm font-semibold text-slate-700">
+              All Products
+            </h2>
+            <p className="text-xs text-slate-400">
+              Showing{" "}
+              <span className="font-medium text-slate-600">
+                {filtered.length}
+              </span>{" "}
+              of{" "}
+              <span className="font-medium text-slate-600">{items.length}</span>{" "}
+              products
+            </p>
           </div>
+          <AddProductModal />
+        </div>
 
-          {/* Right: actions */}
-          <div className="flex items-center gap-1 shrink-0">
-            {isEditing ? (
-              <>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setName(product.name);
-                    setPrice(String(product.price));
-                    setIsEditing(false);
-                  }}
-                  disabled={isSaving}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 rounded cursor-pointer"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-                <SubmitButton
-                  type="button"
-                  onClick={handleSave}
-                  isPending={isSaving}
-                  cta={<Check className="w-4 h-4" />}
-                  isPendingMesssage=""
-                  variant="ghost"
-                  size="icon-xs"
-                  classname="text-[#2db0b0] hover:bg-transparent cursor-pointer"
-                />
-              </>
+        <TableToolbar
+          searchValue={search}
+          onSearchChange={(value) => dispatch(setSearch(value))}
+          searchPlaceholder="Search products..."
+        />
+
+        <div className="overflow-auto flex-1">
+          <div className="md:hidden">
+            {filtered.length === 0 ? (
+              <EmptyState
+                icon={
+                  <Package className="w-10 h-10 mb-3 text-slate-300 opacity-30" />
+                }
+                message="No Products Found"
+                description="Try adjusting your search or filter"
+              />
             ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setIsEditing(true)}
-                  disabled={isDeleting}
-                  className="p-1.5 text-slate-300 hover:text-[#2db0b0] rounded cursor-pointer"
-                >
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setConfirmOpen(true)}
-                  disabled={isDeleting}
-                  className="p-1.5 text-slate-300 hover:text-red-500 rounded cursor-pointer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </>
+              <div className="divide-y divide-slate-100">
+                {filtered.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
             )}
           </div>
+
+          <div className="hidden md:block">
+            <DataTable
+              columns={columns}
+              data={filtered}
+              keyExtractor={(p) => p.id!}
+              emptyMessage="No Products Found"
+              headerVariant="teal"
+            />
+          </div>
         </div>
-      </div>
-    </>
-  );
-}
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-export default function ProductsTable() {
-  const items = useAppSelector((state) => state.products.items);
-  const search = useAppSelector((state) => state.products.search);
-
-  const filtered: Product[] = useMemo(() => {
-    return items.filter((p: Product) => {
-      const q = search.toLowerCase();
-      return search === "" || p.name?.toLowerCase().includes(q);
-    });
-  }, [items, search]);
-
-  return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col h-[calc(100vh-220px)] md:h-[calc(100vh-267px)]">
-      {/* ── Card Header ── */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-100 bg-slate-50/60 shrink-0">
-        <div className="space-y-0.5">
-          <h2 className="text-sm font-semibold text-slate-700">All Products</h2>
+        <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/60 shrink-0">
           <p className="text-xs text-slate-400">
             Showing{" "}
             <span className="font-medium text-slate-600">
@@ -517,61 +312,7 @@ export default function ProductsTable() {
             products
           </p>
         </div>
-        <AddProductModal />
       </div>
-
-      {/* ── Scrollable Content ── */}
-      <div className="overflow-auto flex-1">
-        {/* Mobile: card list */}
-        <div className="md:hidden">
-          {filtered.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-
-        {/* Desktop: table */}
-        <table className="hidden md:table w-full text-sm text-left">
-          <thead className="sticky top-0 z-10">
-            <tr className="bg-[#2db0b0] text-white">
-              <th className="px-4 py-3 font-medium">Name</th>
-              <th className="px-4 py-3 font-medium">Price</th>
-              <th className="px-4 py-3 font-medium">Date Added</th>
-              <th className="px-4 py-3 font-medium">QuickBooks</th>
-              <th className="px-4 py-3 font-medium">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((product: Product) => (
-              <ProductRow key={product.id} product={product} />
-            ))}
-          </tbody>
-        </table>
-
-        {/* ── Empty State ── */}
-        {filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-14 h-14 rounded-xl bg-slate-100 flex items-center justify-center mb-3">
-              <Package className="w-7 h-7 text-slate-300" />
-            </div>
-            <p className="text-base font-medium text-slate-400">
-              No Products Found
-            </p>
-            <p className="text-xs text-slate-300 mt-1">
-              Try adjusting your search or filter
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* ── Footer ── */}
-      <div className="px-4 py-2.5 border-t border-slate-100 bg-slate-50/60 shrink-0">
-        <p className="text-xs text-slate-400">
-          Showing{" "}
-          <span className="font-medium text-slate-600">{filtered.length}</span>{" "}
-          of <span className="font-medium text-slate-600">{items.length}</span>{" "}
-          products
-        </p>
-      </div>
-    </div>
+    </>
   );
 }

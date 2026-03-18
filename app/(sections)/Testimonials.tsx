@@ -1,8 +1,13 @@
 "use client";
 
-import { VIEWPORT, badgePop, fadeUp, staggerContainer } from "@/components/ui/animations";
+import {
+  VIEWPORT,
+  badgePop,
+  fadeUp,
+  staggerContainer,
+} from "@/components/ui/animations";
 import { motion } from "framer-motion";
-
+import { StarRating } from "../(components)/StarRating";
 
 const testimonials = [
   {
@@ -31,31 +36,10 @@ const testimonials = [
   },
 ];
 
-function StarRating() {
-  return (
-    <div className="flex gap-1 mb-4">
-      {[...Array(5)].map((_, i) => (
-        <motion.svg
-          key={i}
-          className="w-4 h-4 text-yellow-400 fill-yellow-400"
-          viewBox="0 0 24 24"
-          initial={{ opacity: 0, scale: 0 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: i * 0.07, type: "spring", stiffness: 300 }}
-        >
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-        </motion.svg>
-      ))}
-    </div>
-  );
-}
-
 export function Testimonials() {
   return (
     <section className="py-24 bg-gray-50 overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
-        {/* Badge */}
         <motion.div
           className="flex justify-center mb-6"
           initial="hidden"
@@ -68,7 +52,6 @@ export function Testimonials() {
           </span>
         </motion.div>
 
-        {/* Heading */}
         <motion.div
           className="text-center mb-14"
           initial="hidden"
@@ -82,7 +65,6 @@ export function Testimonials() {
           </h2>
         </motion.div>
 
-        {/* Cards */}
         <motion.div
           className="grid md:grid-cols-3 gap-6"
           initial="hidden"

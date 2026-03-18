@@ -1,7 +1,7 @@
-import { getContractMaterials } from "./actions";
+import { getContractMaterials } from "./(services)/actions";
 import Providers from "./(sections)/Providers";
-import ContractCards from "./(sections)/ContactCards";
-import Header from "./(sections)/Header";
+import ContractCards from "./(sections)/ContractCards";
+import { DashboardHeader } from "@/app/(components)/DashboardHeader";
 
 export default async function ContractsPage() {
   const contracts = await getContractMaterials();
@@ -9,7 +9,10 @@ export default async function ContractsPage() {
   return (
     <Providers contracts={contracts}>
       <div className="p-4 md:p-8 mx-auto space-y-6">
-        <Header />
+        <DashboardHeader
+          title="Contracts"
+          description="Your contractor documents & forms"
+        />
         <ContractCards />
       </div>
     </Providers>

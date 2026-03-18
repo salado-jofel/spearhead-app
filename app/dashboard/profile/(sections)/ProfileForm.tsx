@@ -2,7 +2,7 @@
 
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { updateProfileInStore } from "../(redux)/profile-slice";
-import { updateProfile } from "../actions";
+import { updateProfile } from "../(services)/actions";
 import { Input } from "@/components/ui/input";
 import SubmitButton from "@/app/(components)/SubmitButton";
 import { User, Mail, Phone, Save } from "lucide-react";

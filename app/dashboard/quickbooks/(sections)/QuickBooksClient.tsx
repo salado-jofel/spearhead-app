@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { disconnectQuickBooks } from "../actions";
 import BulkSync from "./BulkSync";
 import {
   CheckCircle2,
@@ -16,6 +15,7 @@ import {
   Unplug,
   Receipt,
 } from "lucide-react";
+import { disconnectQuickBooks } from "../actions";
 
 interface QuickBooksConnection {
   id: string;

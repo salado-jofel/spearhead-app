@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Building2, Phone, Plus, User } from "lucide-react";
-import { addFacility } from "../actions";
+import { addFacility } from "../(services)/actions";
 import { useAppDispatch } from "@/store/hooks";
 import { addFacilityToStore } from "../(redux)/facilities-slice";
 import SubmitButton from "@/app/(components)/SubmitButton";
@@ -105,7 +105,6 @@ export function AddFacilityModal() {
           </div>
         </div>
 
-        {/* Modal Body */}
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -173,7 +172,6 @@ export function AddFacilityModal() {
             </div>
           </FieldWrapper>
 
-          {/* Actions */}
           <div className="flex flex-col-reverse sm:flex-row gap-2 pt-1 pb-1">
             <Button
               type="button"

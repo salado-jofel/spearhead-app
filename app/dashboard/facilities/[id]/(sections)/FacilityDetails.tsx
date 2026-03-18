@@ -3,9 +3,8 @@
 import { useState } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { updateFacilityInStore } from "../(redux)/facility-slice";
-import { editFacility } from "../actions";
+import { editFacility } from "../(services)/actions";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import SubmitButton from "@/app/(components)/SubmitButton";
 import {
   Select,
@@ -115,7 +114,6 @@ export default function FacilityDetails() {
 
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xl">
-      {/* ── Card Header ── */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 sm:px-6 py-4 border-b border-slate-100 bg-slate-50/60">
         <div className="space-y-0.5">
           <h2 className="text-sm font-semibold text-slate-700">
@@ -127,33 +125,39 @@ export default function FacilityDetails() {
         </div>
 
         {!isEditing ? (
-          <Button
+          <SubmitButton
             type="button"
             variant="outline"
             size="sm"
             onClick={() => {
-              setType(item.type);
-              setStatus(item.status);
+              setType(item.type ?? ""); // ✅ fixed
+              setStatus(item.status ?? ""); // ✅ fixed
               setIsEditing(true);
             }}
-            className="text-[#2db0b0] border-[#2db0b0]/40 hover:bg-teal-50 hover:border-[#2db0b0]"
-          >
-            <Pencil className="w-3.5 h-3.5 sm:mr-1.5" />
-            <span className="hidden sm:inline">Edit Details</span>
-          </Button>
+            classname="text-[#2db0b0] border-[#2db0b0]/40 hover:bg-teal-50 hover:border-[#2db0b0]"
+            cta={
+              <>
+                <Pencil className="w-3.5 h-3.5 sm:mr-1.5" />
+                <span className="hidden sm:inline">Edit Details</span>
+              </>
+            }
+          />
         ) : (
           <div className="flex items-center gap-2">
-            <Button
+            <SubmitButton
               type="button"
               variant="outline"
               size="sm"
               onClick={handleCancel}
-              disabled={isSaving}
-              className="text-slate-500 hover:text-slate-700 disabled:opacity-50"
-            >
-              <X className="w-3.5 h-3.5 sm:mr-1.5" />
-              <span className="hidden sm:inline">Cancel</span>
-            </Button>
+              isPending={isSaving}
+              classname="text-slate-500 hover:text-slate-700"
+              cta={
+                <>
+                  <X className="w-3.5 h-3.5 sm:mr-1.5" />
+                  <span className="hidden sm:inline">Cancel</span>
+                </>
+              }
+            />
 
             <SubmitButton
               type="submit"
@@ -174,13 +178,12 @@ export default function FacilityDetails() {
         )}
       </div>
 
-      {/* ── Card Body (unchanged) ── */}
       <form id="facility-edit-form" onSubmit={handleSubmit} className="p-2">
         <div className="grid grid-cols-1 md:grid-cols-2">
           <FieldRow
             icon={<Building2 className="w-4 h-4" />}
             label="Facility Name"
-            value={item.name}
+            value={item.name ?? ""} // ✅ fixed
             editing={isEditing}
           >
             <Input
@@ -194,7 +197,7 @@ export default function FacilityDetails() {
           <FieldRow
             icon={<Building2 className="w-4 h-4" />}
             label="Type"
-            value={item.type}
+            value={item.type ?? ""} // ✅ fixed
             editing={isEditing}
           >
             <Select value={type} onValueChange={setType} disabled={isSaving}>
@@ -202,7 +205,7 @@ export default function FacilityDetails() {
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                {FACILITY_TYPES.map((t: string) => (
+                {FACILITY_TYPES.map((t) => (
                   <SelectItem key={t} value={t}>
                     {t}
                   </SelectItem>
@@ -214,7 +217,7 @@ export default function FacilityDetails() {
           <FieldRow
             icon={<User className="w-4 h-4" />}
             label="Contact Person"
-            value={item.contact}
+            value={item.contact ?? ""} // ✅ fixed
             editing={isEditing}
           >
             <Input
@@ -228,7 +231,7 @@ export default function FacilityDetails() {
           <FieldRow
             icon={<Phone className="w-4 h-4" />}
             label="Phone"
-            value={item.phone}
+            value={item.phone ?? ""} // ✅ fixed
             editing={isEditing}
           >
             <Input
@@ -243,7 +246,7 @@ export default function FacilityDetails() {
           <FieldRow
             icon={<Activity className="w-4 h-4" />}
             label="Status"
-            value={item.status}
+            value={item.status ?? ""} // ✅ fixed
             editing={isEditing}
           >
             <Select
@@ -255,7 +258,7 @@ export default function FacilityDetails() {
                 <SelectValue placeholder="Select status" />
               </SelectTrigger>
               <SelectContent>
-                {STATUS_OPTIONS.map((s: string) => (
+                {STATUS_OPTIONS.map((s) => (
                   <SelectItem key={s} value={s}>
                     {s}
                   </SelectItem>

@@ -1,6 +1,6 @@
 export const dynamic = "force-dynamic";
 
-import { getProfile } from "./actions";
+import { getProfile } from "./(services)/actions";
 import Providers from "./(sections)/Providers";
 import Header from "./(sections)/Header";
 import ProfileForm from "./(sections)/ProfileForm";

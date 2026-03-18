@@ -1,12 +1,9 @@
-// app/dashboard/marketing/loading.tsx
-
 import { Skeleton } from "@/components/ui/skeleton";
 
 function SkeletonCard() {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm flex flex-col w-full max-w-70">
-      {/* Teal header area */}
-      <div className="bg-slate-200 p-5 h-[148px]">
+      <div className="bg-slate-200 p-5 h-37">
         <div className="flex items-start justify-between">
           <Skeleton className="w-12 h-12 rounded-xl" />
           <Skeleton className="h-6 w-28 rounded-full" />
@@ -17,7 +14,6 @@ function SkeletonCard() {
         </div>
       </div>
 
-      {/* Body */}
       <div className="p-4 flex flex-col flex-1 justify-between gap-4">
         <div className="space-y-1.5">
           <Skeleton className="h-3 w-full" />
@@ -33,7 +29,6 @@ function SkeletonCard() {
 export default function Loading() {
   return (
     <div className="p-4 md:p-8 mx-auto space-y-8 select-none">
-      {/* Header */}
       <div className="flex items-center gap-3">
         <Skeleton className="w-10 h-10 rounded-xl shrink-0" />
         <div className="space-y-1.5">
@@ -42,7 +37,6 @@ export default function Loading() {
         </div>
       </div>
 
-      {/* Group 1 */}
       <div className="space-y-4">
         <Skeleton className="h-3 w-40" />
         <div className="flex flex-wrap gap-4">
@@ -52,7 +46,6 @@ export default function Loading() {
         </div>
       </div>
 
-      {/* Group 2 */}
       <div className="space-y-4">
         <Skeleton className="h-3 w-40" />
         <div className="flex flex-wrap gap-4">
