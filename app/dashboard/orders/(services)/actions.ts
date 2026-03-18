@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { dbSelect, getSupabaseClient } from "@/utils/supabase/db";
-import type { Order, UpdateOrderPayload } from "@/app/(interfaces)/order";
+import type { Order } from "@/app/(interfaces)/order";
 import type { Facility } from "@/app/(interfaces)/facility";
 import type { Product } from "@/app/(interfaces)/product";
 import { requireUser } from "@/utils/auth-guard";
@@ -13,7 +13,6 @@ import {
 
 const ORDER_TABLE = "orders";
 
-// ✅ removed created_by — dropped from DB
 const ORDER_COLUMNS =
   "id, created_at, order_id, facility_id, product_id, amount, status, qb_invoice_id, qb_invoice_status, qb_synced_at, facilities(name, qb_customer_id), products(name, qb_item_id)";
 
@@ -29,7 +28,6 @@ type RawOrder = {
   product_id: string;
   amount: number;
   status: string;
-  // ✅ created_by removed
   qb_invoice_id: string | null;
   qb_invoice_status: string | null;
   qb_synced_at: string | null;
@@ -46,7 +44,6 @@ function flattenOrder(row: RawOrder): Order {
     product_id: row.product_id,
     amount: row.amount,
     status: row.status as Order["status"],
-    // ✅ created_by removed
     facility_name: row.facilities?.name ?? "—",
     product_name: row.products?.name ?? "—",
     facility_qb_customer_id: row.facilities?.qb_customer_id ?? null,
@@ -61,7 +58,6 @@ function flattenOrder(row: RawOrder): Order {
 
 export async function getAllOrders(): Promise<Order[]> {
   try {
-    // ✅ No manual user filter needed — RLS scopes orders to user's facility
     const { data, error } = await dbSelect<RawOrder>({
       table: ORDER_TABLE,
       columns: ORDER_COLUMNS,
@@ -112,7 +108,7 @@ export async function addOrder(formData: FormData): Promise<Order> {
     );
   }
 
-  // ── Step 2: QB first — create invoice, throws on failure ─────────────────
+  // ── Step 2: QB first — create invoice, throws on failure ──────────────────
   const qbInvoiceId = await createQBInvoiceFromData({
     orderDocNumber: order_id,
     qbCustomerId: facility.qb_customer_id,
@@ -131,7 +127,6 @@ export async function addOrder(formData: FormData): Promise<Order> {
       product_id,
       amount,
       status: "Processing",
-      // ✅ created_by removed
       qb_invoice_id: qbInvoiceId,
       qb_invoice_status: "draft",
       qb_synced_at: new Date().toISOString(),
@@ -176,7 +171,6 @@ export async function updateOrderStatus(
   const supabase = await getSupabaseClient();
   const status = formData.get("status") as Order["status"];
 
-  // ✅ RLS ensures user can only touch their own facility's orders
   const { data: current, error: fetchErr } = await supabase
     .from(ORDER_TABLE)
     .select("id, status, qb_invoice_id, qb_invoice_status")
@@ -205,7 +199,6 @@ export async function deleteOrder(orderId: string): Promise<void> {
 
   const supabase = await getSupabaseClient();
 
-  // ✅ RLS ensures user can only delete their own facility's orders
   const { data: current, error: fetchErr } = await supabase
     .from(ORDER_TABLE)
     .select("id, order_id, qb_invoice_id")
@@ -238,18 +231,35 @@ export async function deleteOrder(orderId: string): Promise<void> {
 
 // ── Dropdown helpers ──────────────────────────────────────────────────────────
 
-// ✅ Replaces getActiveFacilities() — user has exactly one facility via RLS
 export async function getUserFacility(): Promise<Facility | null> {
   try {
     const supabase = await getSupabaseClient();
 
+    // ── Get current user explicitly ───────────────────────────────────────
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      console.error("[getUserFacility] Auth error:", authError?.message);
+      return null;
+    }
+
+    // ── Filter by user_id — don't rely on RLS alone ───────────────────────
     const { data, error } = await supabase
       .from("facilities")
-      .select("id, name, location, status, type, contact, phone")
-      .single(); // RLS guarantees only the user's own facility is returned
+      .select("id, name, location, status")
+      .eq("user_id", user.id) // ✅ explicit filter
+      .maybeSingle(); // ✅ won't throw if 0 or multiple rows
 
     if (error) {
       console.error("[getUserFacility] Supabase error:", error.message);
+      return null;
+    }
+
+    if (!data) {
+      console.warn("[getUserFacility] No facility found for user:", user.id);
       return null;
     }
 
