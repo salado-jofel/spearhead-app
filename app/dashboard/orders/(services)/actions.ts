@@ -12,8 +12,11 @@ import {
 } from "./quickbooks-actions";
 
 const ORDER_TABLE = "orders";
+
+// ✅ removed created_by — dropped from DB
 const ORDER_COLUMNS =
-  "id, created_at, order_id, facility_id, product_id, amount, status, created_by, qb_invoice_id, qb_invoice_status, qb_synced_at, facilities(name, qb_customer_id), products(name, qb_item_id)";
+  "id, created_at, order_id, facility_id, product_id, amount, status, qb_invoice_id, qb_invoice_status, qb_synced_at, facilities(name, qb_customer_id), products(name, qb_item_id)";
+
 const ORDERS_PATH = "/dashboard/orders";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -26,7 +29,7 @@ type RawOrder = {
   product_id: string;
   amount: number;
   status: string;
-  created_by: string | null;
+  // ✅ created_by removed
   qb_invoice_id: string | null;
   qb_invoice_status: string | null;
   qb_synced_at: string | null;
@@ -43,7 +46,7 @@ function flattenOrder(row: RawOrder): Order {
     product_id: row.product_id,
     amount: row.amount,
     status: row.status as Order["status"],
-    created_by: row.created_by ?? undefined,
+    // ✅ created_by removed
     facility_name: row.facilities?.name ?? "—",
     product_name: row.products?.name ?? "—",
     facility_qb_customer_id: row.facilities?.qb_customer_id ?? null,
@@ -54,26 +57,14 @@ function flattenOrder(row: RawOrder): Order {
   };
 }
 
-async function getCurrentUser() {
-  const supabase = await getSupabaseClient();
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-  if (error || !user) throw new Error("Not authenticated");
-  return { user, supabase };
-}
-
 // ── READ ──────────────────────────────────────────────────────────────────────
 
 export async function getAllOrders(): Promise<Order[]> {
   try {
-    const { user, supabase } = await getCurrentUser();
-
+    // ✅ No manual user filter needed — RLS scopes orders to user's facility
     const { data, error } = await dbSelect<RawOrder>({
       table: ORDER_TABLE,
       columns: ORDER_COLUMNS,
-      filters: [{ column: "created_by", value: user.id }],
       order: { column: "created_at", ascending: false },
     });
 
@@ -82,16 +73,7 @@ export async function getAllOrders(): Promise<Order[]> {
       return [];
     }
 
-    const orders = (data ?? []).map(flattenOrder);
-
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("id, email")
-      .eq("id", user.id)
-      .single();
-
-    const email = profile?.email ?? user.email ?? undefined;
-    return orders.map((o) => ({ ...o, created_by_email: email }));
+    return (data ?? []).map(flattenOrder);
   } catch (err) {
     console.error("[getAllOrders] Unexpected error:", err);
     return [];
@@ -103,7 +85,7 @@ export async function getAllOrders(): Promise<Order[]> {
 export async function addOrder(formData: FormData): Promise<Order> {
   await requireUser();
 
-  const { user, supabase } = await getCurrentUser();
+  const supabase = await getSupabaseClient();
 
   const order_id = formData.get("order_id") as string;
   const facility_id = formData.get("facility_id") as string;
@@ -149,7 +131,7 @@ export async function addOrder(formData: FormData): Promise<Order> {
       product_id,
       amount,
       status: "Processing",
-      created_by: user.id,
+      // ✅ created_by removed
       qb_invoice_id: qbInvoiceId,
       qb_invoice_status: "draft",
       qb_synced_at: new Date().toISOString(),
@@ -159,7 +141,6 @@ export async function addOrder(formData: FormData): Promise<Order> {
 
   if (insertError || !insertedRow) {
     console.error("[addOrder] DB insert error:", insertError?.message);
-    // Compensate — void the QB invoice we just created
     try {
       await voidQuickBooksInvoice(qbInvoiceId);
     } catch (e) {
@@ -192,14 +173,14 @@ export async function updateOrderStatus(
 ): Promise<void> {
   await requireUser();
 
-  const { user, supabase } = await getCurrentUser();
+  const supabase = await getSupabaseClient();
   const status = formData.get("status") as Order["status"];
 
+  // ✅ RLS ensures user can only touch their own facility's orders
   const { data: current, error: fetchErr } = await supabase
     .from(ORDER_TABLE)
     .select("id, status, qb_invoice_id, qb_invoice_status")
     .eq("id", orderId)
-    .eq("created_by", user.id)
     .single();
 
   if (fetchErr || !current) throw new Error("Order not found.");
@@ -207,8 +188,7 @@ export async function updateOrderStatus(
   const { error: updateErr } = await supabase
     .from(ORDER_TABLE)
     .update({ status })
-    .eq("id", orderId)
-    .eq("created_by", user.id);
+    .eq("id", orderId);
 
   if (updateErr) {
     console.error("[updateOrderStatus] DB error:", updateErr.message);
@@ -223,13 +203,13 @@ export async function updateOrderStatus(
 export async function deleteOrder(orderId: string): Promise<void> {
   await requireUser();
 
-  const { user, supabase } = await getCurrentUser();
+  const supabase = await getSupabaseClient();
 
+  // ✅ RLS ensures user can only delete their own facility's orders
   const { data: current, error: fetchErr } = await supabase
     .from(ORDER_TABLE)
     .select("id, order_id, qb_invoice_id")
     .eq("id", orderId)
-    .eq("created_by", user.id)
     .single();
 
   if (fetchErr || !current) throw new Error("Order not found.");
@@ -246,8 +226,7 @@ export async function deleteOrder(orderId: string): Promise<void> {
   const { error: deleteErr } = await supabase
     .from(ORDER_TABLE)
     .delete()
-    .eq("id", orderId)
-    .eq("created_by", user.id);
+    .eq("id", orderId);
 
   if (deleteErr) {
     console.error("[deleteOrder] DB error:", deleteErr.message);
@@ -259,23 +238,25 @@ export async function deleteOrder(orderId: string): Promise<void> {
 
 // ── Dropdown helpers ──────────────────────────────────────────────────────────
 
-export async function getActiveFacilities(): Promise<Facility[]> {
+// ✅ Replaces getActiveFacilities() — user has exactly one facility via RLS
+export async function getUserFacility(): Promise<Facility | null> {
   try {
-    const { data, error } = await dbSelect<Facility>({
-      table: "facilities",
-      columns: "id, name, status",
-      order: { column: "name", ascending: true },
-    });
+    const supabase = await getSupabaseClient();
+
+    const { data, error } = await supabase
+      .from("facilities")
+      .select("id, name, location, status, type, contact, phone")
+      .single(); // RLS guarantees only the user's own facility is returned
 
     if (error) {
-      console.error("[getActiveFacilities] Supabase error:", error.message);
-      return [];
+      console.error("[getUserFacility] Supabase error:", error.message);
+      return null;
     }
 
-    return (data ?? []).filter((f) => f.status === "Active");
+    return data;
   } catch (err) {
-    console.error("[getActiveFacilities] Unexpected error:", err);
-    return [];
+    console.error("[getUserFacility] Unexpected error:", err);
+    return null;
   }
 }
 

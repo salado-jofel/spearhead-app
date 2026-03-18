@@ -19,6 +19,21 @@ const nameFields = [
   { label: "Last Name", name: "last_name", placeholder: "Doe" },
 ];
 
+const facilityFields = [
+  {
+    label: "Facility Name",
+    name: "facility_name",
+    placeholder: "General Hospital",
+    required: true,
+  },
+  {
+    label: "Facility Location",
+    name: "facility_location",
+    placeholder: "New York, NY",
+    required: false,
+  },
+];
+
 const roles: { value: Role; icon: React.ReactNode; label: string }[] = [
   {
     value: "sales_representative",
@@ -35,6 +50,8 @@ const roles: { value: Role; icon: React.ReactNode; label: string }[] = [
 export default function SignUpForm() {
   const [state, formAction, isPending] = useActionState(signUp, initialState);
   const [role, setRole] = useState<Role>("sales_representative");
+
+
 
   return (
     <div className="w-full max-w-md select-none rounded-2xl border p-8 md:p-10 bg-white/5 backdrop-blur-2xl border-[#00d4c8]/15 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.06)]">
@@ -87,7 +104,6 @@ export default function SignUpForm() {
           height="h-11"
           required
         />
-
         <AuthField
           id="phone"
           name="phone"
@@ -96,6 +112,29 @@ export default function SignUpForm() {
           placeholder="+1 (555) 000-0000"
           height="h-11"
         />
+
+        <div className="flex items-center gap-3 py-1">
+          <div className="flex-1 h-px bg-white/10" />
+          <span
+            className="text-xs font-medium"
+            style={{ color: "rgba(255,255,255,0.35)" }}
+          >
+            Facility Information
+          </span>
+          <div className="flex-1 h-px bg-white/10" />
+        </div>
+
+        {facilityFields.map((field) => (
+          <AuthField
+            key={field.name}
+            id={field.name}
+            name={field.name}
+            label={field.label}
+            placeholder={field.placeholder}
+            height="h-11"
+            required={field.required}
+          />
+        ))}
 
         <AuthField
           id="password"

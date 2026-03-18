@@ -4,6 +4,7 @@
 
 import { createClient } from "@/utils/supabase/server";
 import { QB_CONFIG } from "@/utils/quickbooks/config";
+import OAuthClient from "intuit-oauth";
 
 // ── Get valid access token (refresh if expired) ───────────────────────────────
 
@@ -159,4 +160,46 @@ export async function qbRequestOrThrow<T>(
     throw new Error(`QB request failed: ${method} ${path}`);
   }
   return result;
+}
+
+
+// ── QB client from env ────────────────────────────────────────────────────────
+export function createQBClient() {
+  return new OAuthClient({
+    clientId: process.env.QB_CLIENT_ID!,
+    clientSecret: process.env.QB_CLIENT_SECRET!,
+    environment: process.env.QB_ENVIRONMENT as "sandbox" | "production",
+    redirectUri: process.env.QB_REDIRECT_URI!,
+  });
+}
+
+export async function getValidQBClient() {
+  const client = createQBClient();
+
+  const hasTokens =
+    !!process.env.QB_ACCESS_TOKEN &&
+    !!process.env.QB_REFRESH_TOKEN &&
+    !!process.env.QB_REALM_ID;
+
+  if (!hasTokens) throw new Error("QB_NOT_CONNECTED");
+
+  client.setToken({
+    access_token: process.env.QB_ACCESS_TOKEN!,
+    refresh_token: process.env.QB_REFRESH_TOKEN!,
+    realmId: process.env.QB_REALM_ID!,
+    token_type: "bearer",
+    expires_in: 3600,
+    x_refresh_token_expires_in: 8726400,
+  });
+
+  // Valid — use as-is
+  if (client.isAccessTokenValid()) return client;
+
+  // Expired — try refresh
+  try {
+    await client.refresh();
+    return client; // refreshed successfully
+  } catch {
+    throw new Error("QB_TOKEN_EXPIRED"); // refresh token also dead
+  }
 }

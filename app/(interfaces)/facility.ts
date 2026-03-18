@@ -1,4 +1,7 @@
+import { ReactNode } from "react";
+
 export interface Facility {
+  location: ReactNode;
   id?: string;
   created_at?: string;
   name: string;

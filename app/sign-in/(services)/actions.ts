@@ -1,9 +1,9 @@
 "use server";
 
+import OAuthClient from "intuit-oauth";
 import { createClient } from "@/utils/supabase/server";
+import { createQBClient } from "@/utils/quickbooks/client";
 import { redirect } from "next/navigation";
-import { getQuickBooksConnection } from "@/app/dashboard/quickbooks/actions";
-import { QB_CONFIG } from "@/utils/quickbooks/config";
 
 export async function signIn(
   prevState: any,
@@ -13,40 +13,59 @@ export async function signIn(
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
+  // ── Step 1: Sign in with Supabase ─────────────────────────────────────────
+  // Must be first — we need an authenticated user to store QB OAuth state
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
-  if (error) {
-    return { error: error.message };
-  }
+  if (error) return { error: error.message };
 
-  const qbConnection = await getQuickBooksConnection();
+  // ── Step 2: Check QB connection ───────────────────────────────────────────
+  const client = createQBClient();
 
-  const isQBValid =
-    qbConnection !== null &&
-    new Date(qbConnection.access_token_expires_at) > new Date();
+  const hasTokens =
+    !!process.env.QB_ACCESS_TOKEN &&
+    !!process.env.QB_REFRESH_TOKEN &&
+    !!process.env.QB_REALM_ID;
 
-  if (!isQBValid) {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      const state = crypto.randomUUID();
-      await supabase.auth.updateUser({
-        data: {
-          qb_oauth_state: state,
-          qb_oauth_state_exp: Date.now() + 10 * 60 * 1000,
-        },
-      });
-      const params = new URLSearchParams({
-        client_id: QB_CONFIG.clientId,
-        redirect_uri: QB_CONFIG.redirectUri,
-        response_type: "code",
-        scope: "com.intuit.quickbooks.accounting",
-        state,
-      });
-      redirect(`${QB_CONFIG.authUrl}?${params.toString()}`);
+  if (hasTokens) {
+    client.setToken({
+      access_token: process.env.QB_ACCESS_TOKEN!,
+      refresh_token: process.env.QB_REFRESH_TOKEN!,
+      realmId: process.env.QB_REALM_ID!,
+      token_type: "bearer",
+      expires_in: 3600,
+      x_refresh_token_expires_in: 8726400,
+    });
+
+    // Token valid — go straight to dashboard
+    if (client.isAccessTokenValid()) {
+      redirect("/dashboard");
+    }
+
+    // Token expired — try silent refresh
+    try {
+      await client.refresh();
+      redirect("/dashboard"); // Refresh worked — all good
+    } catch {
+      // Refresh failed — fall through to full QB OAuth below
     }
   }
 
-  redirect("/dashboard");
+  // ── Step 3: QB not connected or fully expired → trigger OAuth ─────────────
+  // User is now signed in so we can safely store state in user metadata
+  const state = crypto.randomUUID();
+
+  await supabase.auth.updateUser({
+    data: {
+      qb_oauth_state: state,
+      qb_oauth_state_exp: Date.now() + 10 * 60 * 1000, // 10 min
+    },
+  });
+
+  const authUri = client.authorizeUri({
+    scope: [OAuthClient.scopes.Accounting],
+    state,
+  });
+
+  redirect(authUri); // ✅ User goes to Intuit login page
 }
