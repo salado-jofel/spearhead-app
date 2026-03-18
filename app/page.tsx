@@ -10,7 +10,6 @@ import { Product } from "./(sections)/Product";
 
 export default function Home() {
 
-console.log("test")
 
   return (
     <main className="min-h-screen">
