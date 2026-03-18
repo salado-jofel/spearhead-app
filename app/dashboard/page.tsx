@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { getAllOrders } from "./orders/actions";
-import { getFacilities } from "./facilities/actions";
+import { getFacilities } from "./facilities/(services)/actions";
 import Providers from "./(sections)/Providers";
 import RecentOrdersTable from "./(sections)/RecentOrdersTable";
 import { createClient } from "@/utils/supabase/server";

@@ -12,7 +12,7 @@ import {
   updateQBCustomer,
   deactivateQBCustomer,
   reactivateQBCustomer,
-} from "../quickbook-actions";
+} from "../../(services)/quickbook-actions";
 
 const FACILITY_TABLE = "facilities";
 const FACILITY_COLUMNS =

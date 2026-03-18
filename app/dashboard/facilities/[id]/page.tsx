@@ -1,4 +1,4 @@
-import { getFacilityById } from "./actions";
+import { getFacilityById } from "./(services)/actions";
 import { notFound } from "next/navigation";
 import Providers from "./(sections)/Providers";
 import Header from "./(sections)/Header";
@@ -10,8 +10,7 @@ export default async function FacilityPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-
-  const [facility] = await Promise.all([getFacilityById(id)]);
+  const facility = await getFacilityById(id); 
 
   if (!facility) notFound();
 

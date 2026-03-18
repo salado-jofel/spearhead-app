@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { syncAllProductsToQuickBooks } from "../../products/quickbooks-actions";
+import { syncAllProductsToQuickBooks } from "../../products/(services)/quickbooks-actions";
 import {
   Building2,
   Package,
@@ -11,7 +11,7 @@ import {
   CheckCircle2,
   XCircle,
 } from "lucide-react";
-import { syncAllFacilitiesToQuickBooks } from "../../facilities/quickbook-actions";
+import { syncAllFacilitiesToQuickBooks } from "../../facilities/(services)/quickbook-actions";
 import { syncAllOrdersToQuickBooks } from "../../orders/quickbooks-actions";
 
 interface SyncResult {

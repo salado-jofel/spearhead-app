@@ -4,9 +4,9 @@ import { useState } from "react";
 import { useAppSelector, useAppDispatch } from "@/store/hooks";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Trash2, Building2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import SubmitButton from "@/app/(components)/SubmitButton";
 import ConfirmModal from "@/app/(components)/ConfirmModal";
-import { deleteFacility } from "../actions";
+import { deleteFacility } from "../(services)/actions";
 import { clearFacility } from "../(redux)/facility-slice";
 import { StatusBadge } from "../../../../(components)/StatusBadge";
 
@@ -43,7 +43,6 @@ export default function Header() {
       />
 
       <div className="space-y-6">
-        {/* ── Back Button ── */}
         <button
           type="button"
           onClick={() => router.push("/dashboard/facilities")}
@@ -53,16 +52,12 @@ export default function Header() {
           Back to Facilities
         </button>
 
-        {/* ── Hero Card ── */}
         <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-2xl">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-4">
-              {/* ── Icon Avatar ── */}
               <div className="w-14 h-14 rounded-xl bg-[#2db0b0]/10 flex items-center justify-center shrink-0">
                 <Building2 className="w-7 h-7 text-[#2db0b0]" />
               </div>
-
-              {/* ── Name + Meta ── */}
               <div className="space-y-1">
                 <h1 className="text-xl sm:text-2xl font-bold text-slate-800">
                   {item?.name ?? "—"}
@@ -76,17 +71,21 @@ export default function Header() {
               </div>
             </div>
 
-            {/* ── Delete Button ── */}
-            <Button
+            <SubmitButton
               type="button"
               variant="outline"
               onClick={() => setConfirmOpen(true)}
-              disabled={isDeleting}
-              className="self-start sm:self-auto text-red-400 border-red-200 hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all disabled:opacity-50"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              Delete Facility
-            </Button>
+              isPending={isDeleting}
+              isPendingMesssage="Deleting..."
+              classname="self-start sm:self-auto text-red-400 border-red-200 hover:bg-red-50 hover:text-red-600 hover:border-red-300 transition-all"
+              cta={
+                <>
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Delete Facility
+                </>
+              }
+              size="default"
+            />
           </div>
         </div>
       </div>

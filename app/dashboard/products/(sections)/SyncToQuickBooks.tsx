@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { syncProductToQuickBooks } from "../quickbooks-actions";
+import { syncProductToQuickBooks } from "../(services)/quickbooks-actions";
 import { RefreshCw, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 
 interface Props {
