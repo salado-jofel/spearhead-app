@@ -130,8 +130,8 @@ export default function FacilityDetails() {
             variant="outline"
             size="sm"
             onClick={() => {
-              setType(item.type);
-              setStatus(item.status);
+              setType(item.type ?? ""); // ✅ fixed
+              setStatus(item.status ?? ""); // ✅ fixed
               setIsEditing(true);
             }}
             classname="text-[#2db0b0] border-[#2db0b0]/40 hover:bg-teal-50 hover:border-[#2db0b0]"
@@ -183,7 +183,7 @@ export default function FacilityDetails() {
           <FieldRow
             icon={<Building2 className="w-4 h-4" />}
             label="Facility Name"
-            value={item.name}
+            value={item.name ?? ""} // ✅ fixed
             editing={isEditing}
           >
             <Input
@@ -197,7 +197,7 @@ export default function FacilityDetails() {
           <FieldRow
             icon={<Building2 className="w-4 h-4" />}
             label="Type"
-            value={item.type}
+            value={item.type ?? ""} // ✅ fixed
             editing={isEditing}
           >
             <Select value={type} onValueChange={setType} disabled={isSaving}>
@@ -217,7 +217,7 @@ export default function FacilityDetails() {
           <FieldRow
             icon={<User className="w-4 h-4" />}
             label="Contact Person"
-            value={item.contact}
+            value={item.contact ?? ""} // ✅ fixed
             editing={isEditing}
           >
             <Input
@@ -231,7 +231,7 @@ export default function FacilityDetails() {
           <FieldRow
             icon={<Phone className="w-4 h-4" />}
             label="Phone"
-            value={item.phone}
+            value={item.phone ?? ""} // ✅ fixed
             editing={isEditing}
           >
             <Input
@@ -246,7 +246,7 @@ export default function FacilityDetails() {
           <FieldRow
             icon={<Activity className="w-4 h-4" />}
             label="Status"
-            value={item.status}
+            value={item.status ?? ""} // ✅ fixed
             editing={isEditing}
           >
             <Select
